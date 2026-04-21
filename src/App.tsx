@@ -302,8 +302,9 @@ const QueueView = () => {
     fetch('/api/queue', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(setQueue);
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setQueue(Array.isArray(data) ? data : []))
+    .catch(() => setQueue([]));
   };
 
   useEffect(() => {
@@ -397,8 +398,9 @@ const InternalChat = () => {
     fetch('/api/messages', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(setMessages);
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setMessages(Array.isArray(data) ? data : []))
+    .catch(() => setMessages([]));
   };
 
   useEffect(() => {
@@ -551,8 +553,9 @@ const FamilyView = () => {
     fetch('/api/family/me', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(setFamily);
+    .then(res => res.ok ? res.json() : null)
+    .then(data => setFamily(data?.error ? null : data))
+    .catch(() => setFamily(null));
   };
 
   useEffect(() => {
@@ -711,8 +714,9 @@ const ActivityModeSwitcher = () => {
       fetch('/api/doctor/profile', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
       })
-      .then(res => res.json())
-      .then(setDoctorProfile);
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setDoctorProfile(data?.error ? null : data))
+      .catch(() => setDoctorProfile(null));
     }
   }, [user]);
 
@@ -1238,8 +1242,9 @@ const PractitionerCard = () => {
       fetch('/api/doctor/profile', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
       })
-      .then(res => res.json())
-      .then(setProfile);
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setProfile(data?.error ? null : data))
+      .catch(() => setProfile(null));
     }
   }, [user]);
 
@@ -1368,22 +1373,26 @@ const Dashboard = () => {
   const [activityData, setActivityData] = useState<any[]>([]);
 
   useEffect(() => {
-    const headers = { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` };
+    const token = localStorage.getItem('kyam_token');
+    if (!token) return;
+    const headers = { 'Authorization': `Bearer ${token}` };
     
     fetch('/api/stats', { headers })
-      .then(res => res.json())
-      .then(setLiveStats);
+      .then(res => res.ok ? res.json() : null)
+      .then(setLiveStats)
+      .catch(() => setLiveStats(null));
 
     fetch('/api/analytics/activity', { headers })
-      .then(res => res.json())
-      .then(setActivityData);
+      .then(res => res.ok ? res.json() : [])
+      .then(setActivityData)
+      .catch(() => setActivityData([]));
   }, []);
 
   const stats = [
-    { label: t('today_revenue'), value: liveStats ? liveStats.revenue.toLocaleString() : '...', detail: 'GNF', color: 'blue', sub: `↑ ${liveStats ? 'LIFETIME' : ''}`, mono: true },
-    { label: t('stats_attendance'), value: liveStats ? liveStats.attendance : '...', detail: 'PATIENTS', color: 'blue', sub: t('active_active') },
-    { label: t('avg_wait'), value: liveStats ? liveStats.avgWait : '...', detail: t('optimized_queue'), color: 'slate' },
-    { label: t('stats_momo'), value: liveStats ? (liveStats.momoRevenue / 1000).toFixed(0) + 'k' : '...', detail: 'GNF', color: 'orange', sub: t('momo_guinee') },
+    { label: t('today_revenue'), value: liveStats?.revenue !== undefined ? liveStats.revenue.toLocaleString() : '...', detail: 'GNF', color: 'blue', sub: `↑ ${liveStats ? 'LIFETIME' : ''}`, mono: true },
+    { label: t('stats_attendance'), value: liveStats?.attendance !== undefined ? liveStats.attendance : '...', detail: 'PATIENTS', color: 'blue', sub: t('active_active') },
+    { label: t('avg_wait'), value: liveStats?.avgWait !== undefined ? liveStats.avgWait : '...', detail: t('optimized_queue'), color: 'slate' },
+    { label: t('stats_momo'), value: liveStats?.momoRevenue !== undefined ? (liveStats.momoRevenue / 1000).toFixed(0) + 'k' : '...', detail: 'GNF', color: 'orange', sub: t('momo_guinee') },
   ];
 
   return (
@@ -2146,8 +2155,9 @@ const UsersView = () => {
     fetch('/api/users', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(setUsers);
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setUsers(Array.isArray(data) ? data : []))
+    .catch(() => setUsers([]));
   };
 
   useEffect(() => {

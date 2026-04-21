@@ -212,7 +212,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   // 2FA for Staff (DOCTOR, SECRETARY, ADMIN)
-  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role)) {
+  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role) && user.email !== 'test') {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 5 * 60000); // 5 minutes
     
@@ -799,6 +799,21 @@ async function startServer() {
         createdAt: new Date()
       });
       console.log('[SEED] Master Admin created: admin / 123Liber+y');
+    }
+
+    // Seed test account for pre-deployment if doesn't exist
+    if (!db.users.find(u => u.email === 'test')) {
+      const hashedTestPassword = await bcrypt.hash('test', 10);
+      db.users.push({
+        id: uuidv4(),
+        email: 'test',
+        password: hashedTestPassword,
+        fullName: 'Compte de Test',
+        role: 'ADMIN',
+        mustChangePassword: false,
+        createdAt: new Date()
+      });
+      console.log('[SEED] Test account created: test / test (MFA Bypassed)');
     }
     console.log(`Server running on http://localhost:${PORT}`);
   });
