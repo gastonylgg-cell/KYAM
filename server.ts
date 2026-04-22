@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express-serve-static-core';
 import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -86,17 +87,48 @@ export const restrictTo = (...roles: string[]) => {
 
 // --- SOCKET CONNECTION ---
 io.on('connection', (socket) => {
-  socket.on('authenticate', (token) => {
+  // Try to authenticate via handshake first
+  const handshakeToken = socket.handshake.auth?.token;
+  if (handshakeToken) {
     try {
+      const decoded = jwt.verify(handshakeToken, JWT_SECRET) as any;
+      const user = db.users.find(u => u.id === decoded.id);
+      if (user) {
+        socket.join(`user:${user.id}`);
+        socket.join(`role:${user.role}`);
+        console.log(`[AUTH] User ${user.fullName} authenticated via handshake`);
+      }
+    } catch (e) {}
+  }
+
+  socket.on('authenticate', (token) => {
+    if (!token) {
+      console.log('Socket connection without token');
+      return;
+    }
+    
+    // Debug logging for token (safe metadata only)
+    const tokenType = typeof token;
+    const tokenLength = tokenType === 'string' ? token.length : 'N/A';
+    console.log(`[AUTH] Socket auth attempt. Type: ${tokenType}, Length: ${tokenLength}`);
+
+    try {
+      if (tokenType !== 'string') {
+        throw new Error('Token is not a string');
+      }
       const decoded = jwt.verify(token, JWT_SECRET) as any;
       const user = db.users.find(u => u.id === decoded.id);
       if (user) {
         socket.join(`user:${user.id}`);
         socket.join(`role:${user.role}`);
         console.log(`User ${user.fullName} (${user.role}) connected to real-time sync`);
+      } else {
+        console.log('[AUTH] User from token not found in mock DB');
+        socket.emit('auth_error', { message: 'User not found' });
       }
-    } catch (e) {
-      console.log('Socket authentication failed');
+    } catch (e: any) {
+      console.log(`Socket authentication failed: ${e.message}`);
+      socket.emit('auth_error', { message: e.message });
     }
   });
 
@@ -176,8 +208,8 @@ app.post('/api/auth/register', async (req: any, res) => {
     db.doctors.push({
       id: uuidv4(),
       userId: newUser.id,
-      firstName: firstName || fullName.split(' ')[0],
-      lastName: lastName || fullName.split(' ')[1] || '',
+      firstName: firstName || (fullName || '').split(' ')[0] || 'Praticien',
+      lastName: lastName || (fullName || '').split(' ')[1] || '',
       specialty: specialty || 'Généraliste',
       registrationNumber: registrationNumber || `RPPS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
       currentActivity: 'CONSULTATION', // Default
@@ -785,9 +817,12 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, '0.0.0.0', async () => {
-    // Seed initial admin if no users exist
+    // Seed initial admin and test user if no users exist
     if (db.users.length === 0) {
       const hashedAdminPassword = await bcrypt.hash('123Liber+y', 10);
+      const hashedTestPassword = await bcrypt.hash('test', 10);
+
+      // Main Admin
       db.users.push({
         id: uuidv4(),
         email: 'admin',
@@ -798,7 +833,6 @@ async function startServer() {
         mustChangePassword: false,
         createdAt: new Date()
       });
-      console.log('[SEED] Master Admin created: admin / 123Liber+y');
     }
 
     // Seed test account for pre-deployment if doesn't exist

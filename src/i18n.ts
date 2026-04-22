@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   fr: {
     translation: {
-      "app_name": "Centre Médical KYAM",
+      "app_name": "KYAM Medical Center",
       "dashboard": "Tableau de Bord",
       "appointments": "Rendez-vous",
       "vaccinations": "Intelligence Vaccinale",
@@ -47,7 +47,7 @@ const resources = {
       "landing_hero_subtitle": "Une approche moderne et premium de la santé, dédiée à la prévention, à la confiance et au bien-être des patients.",
       "landing_btn_portal": "Accéder au Portail",
       "landing_btn_contact": "Nous Contacter",
-      "landing_presentation_title": "À Propos du Centre Médical KYAM",
+      "landing_presentation_title": "À Propos de KYAM Medical Center",
       "landing_presentation_text": "KYAM Medical Center est une clinique moderne et premium spécialisée en prévention, vaccination et suivi médical pour adultes et enfants. Notre mission est d’offrir une médecine de qualité, accessible, rassurante et centrée sur le patient.",
       "vision_title": "Notre Vision",
       "vision_text": "Devenir une référence en Guinée en matière de médecine préventive, en combinant excellence médicale, expérience patient haut de gamme et approche humaine.",
@@ -222,11 +222,12 @@ const resources = {
       "review_1": "Un service d'une qualité rare à Conakry. Le système de rappel est parfait.",
       "review_2": "L'approche préventive a changé ma vision de la santé. Très professionnel.",
       "review_3": "Une équipe bienveillante et des installations modernes. Je recommande vivement.",
+      "session_expired_relogin": "Votre session a expiré. Veuillez vous reconnecter pour continuer.",
     }
   },
   en: {
     translation: {
-      "app_name": "KYAM Medical Centre",
+      "app_name": "KYAM Medical Center",
       "dashboard": "Dashboard",
       "appointments": "Appointments",
       "vaccinations": "Vaccination Intel",
@@ -269,8 +270,8 @@ const resources = {
       "landing_hero_subtitle": "A modern and premium approach to health, dedicated to prevention, trust, and patient well-being.",
       "landing_btn_portal": "Patient/Staff Portal",
       "landing_btn_contact": "Contact Us",
-      "landing_presentation_title": "About KYAM Medical Centre",
-      "landing_presentation_text": "KYAM Medical Centre is a modern and premium clinic specialized in prevention, vaccination, and medical follow-up for adults and children. Our mission is to offer quality medicine, accessible, reassuring, and patient-centered.",
+      "landing_presentation_title": "About KYAM Medical Center",
+      "landing_presentation_text": "KYAM Medical Center is a modern and premium clinic specialized in prevention, vaccination, and medical follow-up for adults and children. Our mission is to offer quality medicine, accessible, reassuring, and patient-centered.",
       "vision_title": "Our Vision",
       "vision_text": "To become a reference in Guinea for preventive medicine, combining medical excellence, a high-end patient experience, and a human approach.",
       "mission_title": "Our Mission",
@@ -301,7 +302,8 @@ const resources = {
       "community_trust": "Trusted by our community",
       "review_1": "A rare level of service in Conakry. The reminder system is perfect.",
       "review_2": "The preventive approach changed my view on health. Very professional.",
-      "review_3": "A caring team and modern facilities. I highly recommend them."
+      "review_3": "A caring team and modern facilities. I highly recommend them.",
+      "session_expired_relogin": "Your session has expired. Please log in again to continue.",
     }
   }
 };

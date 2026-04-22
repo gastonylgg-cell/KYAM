@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Calendar, 
@@ -23,9 +23,6 @@ import {
   Globe,
   Baby,
   Signal,
-  Facebook,
-  Instagram,
-  Youtube,
   Sun,
   Cloud,
   Music2,
@@ -62,9 +59,10 @@ import {
   isBefore
 } from 'date-fns';
 import Logo from './components/Logo';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 // --- TYPES ---
-interface User {
+export interface User {
   id: string;
   email: string;
   fullName: string;
@@ -75,14 +73,15 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  socket: Socket | null;
   login: (token: string, user: User) => void;
   logout: () => void;
   notifications: any[];
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-const useAuth = () => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
@@ -190,24 +189,6 @@ const Navigation = ({
   );
 };
 
-const LanguageSwitcher = () => {
-  const { i18n, t } = useTranslation();
-  const currentLang = i18n.language;
-
-  const toggleLanguage = () => {
-    i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr');
-  };
-
-  return (
-    <button 
-      onClick={toggleLanguage}
-      className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold transition-all h-11"
-    >
-      <Globe className="w-4 h-4" />
-      <span className="uppercase tracking-tighter">{currentLang === 'fr' ? 'English' : 'Français'}</span>
-    </button>
-  );
-};
 
 const NotificationCenter = ({ notifications }: { notifications: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -265,443 +246,24 @@ const NotificationCenter = ({ notifications }: { notifications: any[] }) => {
   );
 };
 
-const WeatherWidget = () => {
-  const [weather, setWeather] = useState({ temp: 29, condition: 'Sunny' });
-  const { t } = useTranslation();
 
-  useEffect(() => {
-    // Simulated weather fetch for Conakry
-    const timer = setTimeout(() => {
-      setWeather({ temp: 31, condition: 'Mainly Sunny' });
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+const LandingPage = lazy(() => import('./components/views/LandingPage'));
+const Dashboard = lazy(() => import('./components/views/Dashboard'));
+const QueueView = lazy(() => import('./components/views/QueueView'));
+const InternalChat = lazy(() => import('./components/views/InternalChat'));
+const FamilyView = lazy(() => import('./components/views/FamilyView'));
 
-  return (
-    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20">
-      <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-amber-900 shadow-lg shadow-amber-500/20">
-        <Sun className="w-5 h-5" />
-      </div>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-black uppercase text-blue-200 leading-none mb-1">Conakry</span>
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm font-black text-white">{weather.temp}°C</span>
-          <span className="text-[9px] font-bold text-white/60 uppercase">{weather.condition}</span>
-        </div>
-      </div>
+const Loading = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest animate-pulse">Chargement...</p>
     </div>
-  );
-};
+  </div>
+);
 
-const QueueView = () => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const [queue, setQueue] = useState<any[]>([]);
 
-  const fetchQueue = () => {
-    fetch('/api/queue', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    })
-    .then(res => res.ok ? res.json() : [])
-    .then(data => setQueue(Array.isArray(data) ? data : []))
-    .catch(() => setQueue([]));
-  };
 
-  useEffect(() => {
-    fetchQueue();
-    const timer = setInterval(fetchQueue, 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleComplete = async (queueId: string) => {
-    await fetch('/api/queue/complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` },
-      body: JSON.stringify({ queueId })
-    });
-    fetchQueue();
-  };
-
-  const handleNoShow = async (appointmentId: string) => {
-    if (!confirm("Marquer ce rendez-vous comme non honoré ? (Le patient sera bloqué après 3 absences)")) return;
-    const res = await fetch(`/api/appointments/${appointmentId}/no-show`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    });
-    if (res.ok) {
-      alert("Absence enregistrée.");
-      fetchQueue();
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm p-6">
-      <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
-        <Clock className="w-4 h-4" />
-        {t('waiting_list')}
-      </h3>
-      <div className="space-y-4">
-        {queue.map((item) => (
-          <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold border border-slate-200 shadow-sm">
-                {item.patientName?.[0] || 'P'}
-              </div>
-              <div>
-                <p className="text-sm font-black text-slate-800">{item.patientName}</p>
-                <div className="flex gap-2 mt-1">
-                  <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-black uppercase">{item.type}</span>
-                  <span className="text-[8px] text-slate-400 font-mono font-bold uppercase">{new Date(item.checkedInAt).toLocaleTimeString()}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {item.status === 'WAITING' && (user?.role === 'DOCTOR' || user?.role === 'ADMIN') && (
-                <>
-                  <button 
-                    onClick={() => handleNoShow(item.appointmentId)}
-                    className="px-3 py-2 bg-white border border-red-100 text-red-500 text-[9px] font-black uppercase rounded-lg shadow-sm hover:bg-red-50 transition-all"
-                  >
-                    Absence
-                  </button>
-                  <button 
-                    onClick={() => handleComplete(item.id)}
-                    className="px-4 py-2 bg-blue-600 text-white text-[9px] font-black uppercase rounded-lg shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
-                  >
-                    {t('mark_treated')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-        {queue.length === 0 && (
-          <div className="py-10 text-center">
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t('no_one_waiting')}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const InternalChat = () => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [content, setContent] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const fetchMessages = () => {
-    fetch('/api/messages', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    })
-    .then(res => res.ok ? res.json() : [])
-    .then(data => setMessages(Array.isArray(data) ? data : []))
-    .catch(() => setMessages([]));
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchMessages();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const socket = io({ auth: { token: localStorage.getItem('kyam_token') } });
-    socket.on('new_chat_message', (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
-    return () => { socket.disconnect(); };
-  }, []);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const handleSendMessage = async (e?: React.FormEvent, attachmentData?: any) => {
-    e?.preventDefault();
-    if (!content && !attachmentData) return;
-
-    await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` },
-      body: JSON.stringify({ 
-        content,
-        ...attachmentData
-      })
-    });
-    setContent('');
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      handleSendMessage(undefined, {
-        attachment: reader.result,
-        attachmentName: file.name,
-        attachmentType: file.type
-      });
-      setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  if (!user || !['ADMIN', 'DOCTOR', 'SECRETARY'].includes(user.role)) return null;
-
-  return (
-    <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[100] group"
-      >
-        {isOpen ? <X /> : <MessageCircle className="w-8 h-8" />}
-        <span className="absolute right-full mr-4 px-3 py-1.5 bg-slate-900 text-white text-[10px] font-black uppercase rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-          {t('internal_chat')}
-        </span>
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-48px)] bg-white rounded-[40px] shadow-2xl border border-slate-200 z-[100] overflow-hidden flex flex-col h-[600px] max-h-[calc(100vh-140px)]"
-          >
-            <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-black uppercase tracking-tighter italic">{t('internal_chat')}</h3>
-                <p className="text-[8px] font-bold uppercase text-slate-400 mt-1">{t('chat_history_notice')}</p>
-              </div>
-              <Activity className="w-5 h-5 text-blue-400" />
-            </div>
-
-            <div ref={scrollRef} className="flex-1 overflow-auto p-6 bg-slate-50 space-y-4 custom-scrollbar">
-              {messages.map((m) => (
-                <div key={m.id} className={`flex flex-col ${m.senderId === user.id ? 'items-end' : 'items-start'}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-black uppercase text-slate-400">{m.senderName}</span>
-                    <span className="text-[8px] font-black uppercase bg-slate-200 text-slate-500 px-1 rounded">{m.senderRole}</span>
-                  </div>
-                  <div className={`p-4 rounded-[24px] max-w-[85%] text-xs font-medium shadow-sm ${m.senderId === user.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}`}>
-                    {m.content && <p className="leading-relaxed">{m.content}</p>}
-                    {m.attachment && (
-                      <div className={`mt-2 p-3 rounded-xl border ${m.senderId === user.id ? 'bg-blue-700 border-blue-500' : 'bg-slate-50 border-slate-100'}`}>
-                        <div className="flex items-center gap-3">
-                           {m.attachmentType?.includes('image') ? <Camera className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                           <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-black truncate">{m.attachmentName}</p>
-                              <a href={m.attachment} download={m.attachmentName} className="text-[9px] font-bold uppercase underline pointer-events-auto">Télécharger</a>
-                           </div>
-                        </div>
-                      </div>
-                    )}
-                    <span className={`block text-[8px] font-bold uppercase mt-2 opacity-40`}>{new Date(m.timestamp).toLocaleTimeString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-slate-100 shrink-0">
-              <div className="flex gap-3 items-end">
-                <div className="flex-1 relative">
-                  <textarea 
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                    placeholder="Tapez un message..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pr-12 text-xs font-bold outline-none focus:ring-4 focus:ring-blue-100 transition-all resize-none max-h-32"
-                    rows={1}
-                  />
-                  <div className="absolute right-3 bottom-3 flex gap-2">
-                    <label className="cursor-pointer text-slate-400 hover:text-blue-600 transition-colors">
-                      <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                      <Paperclip className={`w-5 h-5 ${isUploading ? 'animate-pulse' : ''}`} />
-                    </label>
-                  </div>
-                </div>
-                <button type="submit" className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 hover:scale-105 active:scale-95 transition-all">
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-};
-
-const FamilyView = () => {
-  const { t } = useTranslation();
-  const [family, setFamily] = useState<any>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
-  const [familyName, setFamilyName] = useState('');
-  const [familyId, setFamilyId] = useState('');
-
-  const fetchFamily = () => {
-    fetch('/api/family/me', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    })
-    .then(res => res.ok ? res.json() : null)
-    .then(data => setFamily(data?.error ? null : data))
-    .catch(() => setFamily(null));
-  };
-
-  useEffect(() => {
-    fetchFamily();
-  }, []);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await fetch('/api/family/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` },
-      body: JSON.stringify({ name: familyName })
-    });
-    setIsCreating(false);
-    fetchFamily();
-  };
-
-  const handleJoin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await fetch('/api/family/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` },
-      body: JSON.stringify({ familyId })
-    });
-    setIsJoining(false);
-    fetchFamily();
-  };
-
-  return (
-    <div className="p-6">
-      <header className="mb-8">
-        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tighter italic">{t('family_folder')}</h2>
-        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('patient_info_general')}</p>
-      </header>
-
-      {!family ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white p-8 rounded-3xl border border-dotted border-slate-200 flex flex-col items-center justify-center text-center shadow-lg shadow-slate-100 transition-all">
-             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
-                <Plus className="w-8 h-8" />
-             </div>
-             <h3 className="text-sm font-black text-slate-800 uppercase mb-2">{t('create_family')}</h3>
-             <button onClick={() => setIsCreating(true)} className="mt-4 px-6 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-blue-100">{t('create_one')}</button>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white p-8 rounded-3xl border border-dotted border-slate-200 flex flex-col items-center justify-center text-center shadow-lg shadow-slate-100 transition-all">
-             <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-6">
-                <Users className="w-8 h-8" />
-             </div>
-             <h3 className="text-sm font-black text-slate-800 uppercase mb-2">{t('join_family')}</h3>
-             <button onClick={() => setIsJoining(true)} className="mt-4 px-6 py-2 bg-slate-900 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-slate-100">{t('signin_now')}</button>
-          </motion.div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 blur-3xl rounded-full"></div>
-              <h3 className="text-2xl font-black italic tracking-tighter mb-2">{family.name}</h3>
-              <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">{t('family_members')}</p>
-              <div className="mt-6 flex flex-wrap gap-4">
-                 {family.members.map((m: any, i: number) => (
-                   <div key={i} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 flex items-center gap-3">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${m.email}`} alt="" className="w-8 h-8 rounded-full bg-white/20" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase leading-none">{m.fullName}</p>
-                        <p className="text-[8px] opacity-60 font-mono mt-0.5">{m.email}</p>
-                      </div>
-                   </div>
-                 ))}
-              </div>
-           </div>
-           
-           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">ID FAMILIAL (PARTAGE)</p>
-                <div className="font-mono text-sm font-bold text-slate-700">{family.id}</div>
-              </div>
-              <button 
-                onClick={() => {
-                   navigator.clipboard.writeText(family.id);
-                   alert('ID Copié !');
-                }} 
-                className="px-4 py-2 bg-slate-50 text-slate-600 text-[9px] font-black uppercase rounded-lg hover:bg-slate-100 transition-all"
-              >
-                Copier l'ID
-              </button>
-           </div>
-        </div>
-      )}
-
-      <AnimatePresence>
-        {isCreating && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCreating(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl border border-white">
-              <h3 className="text-2xl font-black tracking-tighter uppercase mb-6">{t('create_family')}</h3>
-              <form onSubmit={handleCreate} className="space-y-6">
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nom du dossier familial</label>
-                   <input required value={familyName} onChange={e => setFamilyName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold" placeholder="ex: Famille Keita" />
-                </div>
-                <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-100">Confirmer la création</button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-        {isJoining && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsJoining(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl border border-white">
-              <h3 className="text-2xl font-black tracking-tighter uppercase mb-6">{t('join_family')}</h3>
-              <form onSubmit={handleJoin} className="space-y-6">
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Code ID de la famille</label>
-                   <input required value={familyId} onChange={e => setFamilyId(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-mono font-bold" placeholder={t('family_id_placeholder')} />
-                </div>
-                <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-100">Rejoindre le dossier</button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const SocialLinks = ({ vertical = false }: { vertical?: boolean }) => {
-  const links = [
-    { icon: Facebook, color: 'hover:text-blue-600', url: '#' },
-    { icon: Instagram, color: 'hover:text-pink-500', url: '#' },
-    { icon: Music2, color: 'hover:text-black', url: '#' }, // TikTok
-    { icon: Youtube, color: 'hover:text-red-600', url: '#' },
-  ];
-
-  return (
-    <div className={`flex ${vertical ? 'flex-col' : 'flex-row'} gap-4`}>
-      {links.map((link, i) => {
-        const Icon = link.icon;
-        return (
-          <a key={i} href={link.url} className={`p-3.5 bg-slate-50 rounded-xl text-slate-400 ${link.color} transition-all hover:scale-110 shadow-sm border border-slate-100 flex items-center justify-center min-w-[44px] min-h-[44px]`}>
-            <Icon className="w-5 h-5" />
-          </a>
-        );
-      })}
-    </div>
-  );
-};
 
 const ActivityModeSwitcher = () => {
   const { user } = useAuth();
@@ -886,8 +448,10 @@ const AppointmentView = () => {
 
   const generateSlots = () => {
     const slots = [];
-    const [openH, openM] = settings.openTime.split(':').map(Number);
-    const [closeH, closeM] = settings.closeTime.split(':').map(Number);
+    const openTime = settings?.openTime || '08:00';
+    const closeTime = settings?.closeTime || '18:00';
+    const [openH, openM] = openTime.split(':').map(Number);
+    const [closeH, closeM] = closeTime.split(':').map(Number);
     
     let current = setMinutes(setHours(selectedDate, openH), openM);
     const end = setMinutes(setHours(selectedDate, closeH), closeM);
@@ -1232,302 +796,6 @@ const VaccinationView = () => {
   );
 };
 
-const PractitionerCard = () => {
-  const { user } = useAuth();
-  const { t } = useTranslation();
-  const [profile, setProfile] = useState<any>(null);
-
-  useEffect(() => {
-    if (user?.role === 'DOCTOR') {
-      fetch('/api/doctor/profile', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-      })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => setProfile(data?.error ? null : data))
-      .catch(() => setProfile(null));
-    }
-  }, [user]);
-
-  if (user?.role !== 'DOCTOR' || !profile) return null;
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-blue-900 to-indigo-900 text-white p-8 rounded-[32px] shadow-2xl relative overflow-hidden group mb-8">
-      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-         <Logo className="w-32 h-32 text-white" />
-      </div>
-      <div className="relative z-10 flex flex-col md:flex-row gap-6 md:items-center">
-        <div className="w-20 h-20 bg-white/10 rounded-3xl backdrop-blur-xl border border-white/20 flex items-center justify-center shrink-0">
-           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="avatar" className="w-16 h-16" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-xs font-black text-blue-300 uppercase tracking-widest mb-1">{t('practitioner_card')}</h4>
-          <p className="text-xl font-black tracking-tight uppercase">{user.fullName}</p>
-          <div className="grid grid-cols-2 gap-4 md:flex md:gap-8 mt-4">
-            <div>
-              <p className="text-[8px] font-black uppercase opacity-50 text-blue-100 mb-0.5">{t('specialty')}</p>
-              <p className="text-[10px] font-bold text-white">{profile.specialty}</p>
-            </div>
-            <div className="md:border-l md:border-white/10 md:pl-8">
-              <p className="text-[8px] font-black uppercase opacity-50 text-blue-100 mb-0.5">{t('practitioner_number')}</p>
-              <p className="text-[10px] font-bold text-white font-mono">{profile.registrationNumber}</p>
-            </div>
-          </div>
-        </div>
-        <div className="md:ml-auto relative z-10">
-           <div className={`px-4 py-3 rounded-xl border ${profile.currentActivity === 'VACCINATION' ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'} text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit`}>
-              <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${profile.currentActivity === 'VACCINATION' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
-              {profile.currentActivity === 'VACCINATION' ? t('type_vaccination') : t('type_consultation')}
-           </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-const MyAppointments = () => {
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const { t } = useTranslation();
-
-  const fetchAppts = () => {
-    fetch('/api/appointments/me', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    })
-    .then(res => res.json())
-    .then(data => setAppointments(Array.isArray(data) ? data : []));
-  };
-
-  useEffect(() => {
-    fetchAppts();
-  }, []);
-
-  const handleCancel = async (id: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir annuler ce rendez-vous ?")) return;
-    const res = await fetch(`/api/appointments/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
-    });
-    if (res.ok) fetchAppts();
-    else {
-      const data = await res.json();
-      alert(data.message);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm p-6 overflow-hidden mt-6">
-      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 mb-6 flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-blue-600" />
-        {t('my_appointments')}
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {appointments.filter(a => a.status !== 'CANCELLED').map(appt => {
-          const appDate = new Date(appt.startTime);
-          const now = new Date();
-          const dayStart = new Date(appDate);
-          dayStart.setHours(0,0,0,0);
-          const limitTime = dayStart.getTime() - (12 * 60 * 60 * 1000);
-          const canAction = now.getTime() < limitTime;
-
-          return (
-            <div key={appt.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between group hover:border-blue-200 transition-all">
-              <div>
-                <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight">{appt.type === 'VACCINATION' ? 'Vaccination' : 'Consultation'}</p>
-                <p className="text-[11px] text-slate-500 font-bold truncate max-w-[150px]">{appt.reason}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px] font-mono font-bold tracking-tighter">
-                    {format(appDate, 'dd/MM/yyyy HH:mm')}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {canAction ? (
-                  <button onClick={() => handleCancel(appt.id)} className="p-2.5 bg-white text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm border border-slate-100">
-                    <X className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => alert("Veuillez contacter directement le secrétariat du centre médical pour toute annulation ou modification moins de 12h avant le rendez-vous.")}
-                    className="p-2 bg-slate-200 text-slate-400 rounded-xl hover:bg-slate-300 transition-all"
-                  >
-                    <Clock className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-        {appointments.filter(a => a.status !== 'CANCELLED').length === 0 && (
-          <div className="col-span-full py-10 text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">{t('no_events')}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const Dashboard = () => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const [liveStats, setLiveStats] = useState<any>(null);
-  const [activityData, setActivityData] = useState<any[]>([]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('kyam_token');
-    if (!token) return;
-    const headers = { 'Authorization': `Bearer ${token}` };
-    
-    fetch('/api/stats', { headers })
-      .then(res => res.ok ? res.json() : null)
-      .then(setLiveStats)
-      .catch(() => setLiveStats(null));
-
-    fetch('/api/analytics/activity', { headers })
-      .then(res => res.ok ? res.json() : [])
-      .then(setActivityData)
-      .catch(() => setActivityData([]));
-  }, []);
-
-  const stats = [
-    { label: t('today_revenue'), value: liveStats?.revenue !== undefined ? liveStats.revenue.toLocaleString() : '...', detail: 'GNF', color: 'blue', sub: `↑ ${liveStats ? 'LIFETIME' : ''}`, mono: true },
-    { label: t('stats_attendance'), value: liveStats?.attendance !== undefined ? liveStats.attendance : '...', detail: 'PATIENTS', color: 'blue', sub: t('active_active') },
-    { label: t('avg_wait'), value: liveStats?.avgWait !== undefined ? liveStats.avgWait : '...', detail: t('optimized_queue'), color: 'slate' },
-    { label: t('stats_momo'), value: liveStats?.momoRevenue !== undefined ? (liveStats.momoRevenue / 1000).toFixed(0) + 'k' : '...', detail: 'GNF', color: 'orange', sub: t('momo_guinee') },
-  ];
-
-  return (
-    <div className="p-4 md:p-6 pb-24">
-      <PractitionerCard />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat, i) => (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            key={stat.label} 
-            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
-          >
-            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tight">{stat.label}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className={`text-2xl font-bold text-slate-800 ${stat.mono ? 'font-mono' : ''}`}>{stat.value}</h3>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">{stat.detail}</span>
-            </div>
-            {stat.sub && (
-              <div className={`text-[10px] font-bold mt-2 ${stat.color === 'red' ? 'text-red-500 underline' : 'text-emerald-600'}`}>
-                {stat.sub}
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {['ADMIN', 'DOCTOR', 'SECRETARY'].includes(user?.role || '') && (
-            <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-tighter italic">Flux d'Activité Clinique</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Temps Réel</span>
-                  </div>
-               </div>
-               <div className="h-[200px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={activityData}>
-                      <defs>
-                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} 
-                        dy={10}
-                      />
-                      <YAxis hide />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="count" 
-                        stroke="#2563eb" 
-                        strokeWidth={3} 
-                        fillOpacity={1} 
-                        fill="url(#colorCount)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-               </div>
-            </div>
-          )}
-
-          {['ADMIN', 'DOCTOR', 'SECRETARY'].includes(user?.role || '') ? (
-             <QueueView />
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm p-8 flex flex-col items-center justify-center text-center">
-                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
-                    <ShieldCheck className="w-8 h-8" />
-                 </div>
-                 <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tighter mb-2">Bienvenue au portail KYAM</h3>
-                 <p className="text-xs text-slate-500 font-medium max-w-sm leading-relaxed mb-6">Votre santé, notre priorité numérique. Gérez vos rendez-vous, accédez à votre carnet vaccinal et communiquez avec vos praticiens en toute sécurité.</p>
-              </div>
-              <MyAppointments />
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <div className="bg-slate-900 text-white p-5 rounded-xl border border-slate-800 shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{t('ai_pulse')}</h2>
-              <span className="text-[9px] text-slate-500 font-mono tracking-tighter">{t('ai_engine_v')}</span>
-            </div>
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-14 h-14 border-4 border-orange-500 rounded-full flex items-center justify-center font-black text-xl font-mono text-orange-400 shrink-0">84</div>
-              <div>
-                <p className="text-xs font-bold mb-1">{t('risk_factor')}</p>
-                <p className="text-[10px] text-slate-400 leading-relaxed uppercase tracking-tight">{t('localized_malaria')}</p>
-              </div>
-            </div>
-            <button className="w-full py-2.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors shadow-inner">
-              {t('generate_alerts')}
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <h2 className="font-bold text-slate-700 text-xs uppercase tracking-tight">{t('recent_momo')}</h2>
-            </div>
-            <div className="p-4 space-y-3 flex-1">
-              {[
-                { provider: t('mtn_momo'), tx: 'Tx: 9942A82B', amount: '45,000', status: t('verified'), border: 'border-yellow-400' },
-                { provider: t('orange_momo'), tx: 'Tx: 3310X04L', amount: '120,000', status: t('verified'), border: 'border-orange-500' }
-              ].map((tx, idx) => (
-                <div key={idx} className={`flex items-center justify-between border-l-4 ${tx.border} pl-3 py-1`}>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">{tx.provider}</p>
-                    <p className="text-[9px] text-slate-400 font-mono leading-none mt-0.5">{tx.tx}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-black text-slate-800 font-mono">{tx.amount}</p>
-                    <p className="text-[9px] text-blue-600 font-black tracking-widest uppercase">{tx.status}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const RecordsView = () => {
   const [records, setRecords] = useState<any[]>([]);
@@ -1814,7 +1082,7 @@ const RecordsView = () => {
               onClick={() => setFilterService(s)}
               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${filterService === s ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
             >
-              {s === 'ALL' ? 'Tous' : t(s.toLowerCase() + '_vaccines').split(' ')[0]}
+              {s === 'ALL' ? 'Tous' : (t(s.toLowerCase() + '_vaccines') || s).split(' ')[0]}
             </button>
           ))}
         </div>
@@ -2309,424 +1577,6 @@ const UsersView = () => {
   );
 };
 
-const LandingPage = ({ onEnterPortal }: { onEnterPortal: () => void }) => {
-  const { t } = useTranslation();
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex justify-between items-center transition-all duration-300">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-blue-100 bg-blue-600 flex items-center justify-center p-2">
-            <Logo className="text-white w-full h-full" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-black text-slate-800 tracking-tighter uppercase whitespace-nowrap leading-none mb-1">{t('app_name')}</h1>
-            <div className="flex items-center gap-1.5 opacity-60">
-               <div className="flex w-3.5 h-2.5 overflow-hidden rounded-[1px] shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
-                  <div className="flex-1 bg-[#CE1126]"></div>
-                  <div className="flex-1 bg-[#FCD116]"></div>
-                  <div className="flex-1 bg-[#009460]"></div>
-               </div>
-               <span className="text-[8px] font-black uppercase tracking-widest">Guinée</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden lg:flex items-center gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-               <WeatherWidget />
-            </div>
-            <button onClick={onEnterPortal} className="text-[10px] font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors">{t('patients')}</button>
-          </div>
-          <LanguageSwitcher />
-          <button 
-            onClick={onEnterPortal}
-            className="px-5 py-2 bg-blue-600 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 hover:scale-105 transition-all"
-          >
-            {t('landing_btn_portal')}
-          </button>
-        </div>
-      </nav>
-
-      {/* Floating Social Bar */}
-      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden md:block">
-        <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-100 shadow-xl flex flex-col gap-1">
-          <SocialLinks vertical />
-        </div>
-      </div>
-
-      {/* Hero Section */}
-      <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        <motion.div 
-          initial={{ opacity: 0, x: -30 }} 
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-amber-100">
-            <ShieldCheck className="w-3 h-3" />
-            {t('app_catchphrase')}
-          </div>
-          <h2 className="text-5xl lg:text-7xl font-black text-slate-900 leading-[0.95] tracking-tighter mb-8 italic">
-            {t('landing_hero_title')}
-          </h2>
-          <p className="text-lg text-slate-500 font-medium leading-relaxed mb-10 max-w-xl">
-            {t('landing_hero_subtitle')}
-          </p>
-          <div className="flex gap-4">
-            <button onClick={onEnterPortal} className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all">
-              {t('landing_btn_portal')}
-            </button>
-            <button className="px-8 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
-              {t('landing_btn_contact')}
-            </button>
-          </div>
-        </motion.div>
-        <div className="relative">
-          <div className="absolute inset-0 bg-blue-600/5 blur-3xl rounded-full"></div>
-          <div className="relative bg-white p-8 rounded-[40px] border border-slate-100 shadow-2xl">
-             <div className="grid grid-cols-2 gap-4">
-               <div className="h-48 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border border-slate-100">
-                  <Activity className="w-10 h-10 text-blue-500 mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center px-4">{t('surveillance_247')}</p>
-               </div>
-               <div className="h-48 bg-blue-600 rounded-2xl flex flex-col items-center justify-center shadow-xl shadow-blue-100">
-                  <Syringe className="w-10 h-10 text-white mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white text-center px-4">{t('experts_vaccination')}</p>
-               </div>
-               <div className="col-span-2 h-40 bg-slate-900 rounded-2xl p-8 flex justify-between items-center overflow-hidden relative">
-                  <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 blur-2xl rounded-full"></div>
-                  <div>
-                    <h4 className="text-white text-xl font-black mb-1 leading-none tracking-tight">{t('portal_digital')}</h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('total_connectivity')}</p>
-                  </div>
-                  <button onClick={onEnterPortal} className="px-4 py-2 bg-white rounded-lg text-[9px] font-black uppercase text-slate-900">{t('manage')}</button>
-               </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Vision & Mission */}
-      <section className="py-24 bg-amber-50/30">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            className="bg-white p-10 rounded-[40px] shadow-sm border border-amber-100"
-          >
-            <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-4">{t('mission_title')}</h4>
-            <p className="text-slate-600 font-medium leading-relaxed italic">{t('mission_text')}</p>
-          </motion.div>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-blue-900 p-10 rounded-[40px] shadow-sm border border-blue-800"
-          >
-            <h4 className="text-xs font-black text-blue-300 uppercase tracking-widest mb-4">{t('vision_title')}</h4>
-            <p className="text-white font-medium leading-relaxed italic">{t('vision_text')}</p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Presentation */}
-      <section className="py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-          <div className="order-2 lg:order-1">
-             <div className="relative aspect-square rounded-[60px] bg-slate-100 overflow-hidden border-8 border-white shadow-2xl">
-                <img src="https://picsum.photos/seed/clinic/800/800" alt="Clinic" className="object-cover w-full h-full opacity-80" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent"></div>
-             </div>
-          </div>
-          <div className="order-1 lg:order-2">
-             <div className="w-12 h-1 bg-blue-600 mb-8 rounded-full"></div>
-             <h3 className="text-4xl font-black text-slate-900 mb-8 leading-tight tracking-tight">
-               {t('landing_presentation_title')}
-             </h3>
-             <p className="text-lg text-slate-500 font-medium leading-relaxed mb-10">
-               {t('landing_presentation_text')}
-             </p>
-             <div className="grid grid-cols-1 gap-6 mb-10">
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <h4 className="font-black text-blue-600 text-xs uppercase tracking-widest mb-2">{t('values_title')}</h4>
-                  <p className="text-sm text-slate-600 font-bold">{t('values_list')}</p>
-                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase mb-2">{t('omnipraticiens')}</h4>
-                  <p className="text-xs text-slate-500">{t('omnipraticiens_desc')}</p>
-                </div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase mb-2">{t('urgence_queue')}</h4>
-                  <p className="text-xs text-slate-500">{t('urgence_queue_desc')}</p>
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-32 px-6 max-w-7xl mx-auto text-center">
-         <h3 className="text-xs font-black text-blue-600 uppercase tracking-[0.4em] mb-4">{t('landing_features_title')}</h3>
-         <h2 className="text-5xl font-black text-slate-900 mb-20 tracking-tighter">{t('intelligent_care')}</h2>
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { title: t('agenda_intelligent'), desc: t('agenda_intelligent_desc'), icon: Calendar },
-              { title: t('dossier_digital'), desc: t('dossier_digital_desc'), icon: Clipboard },
-              { title: t('ia_preventive'), desc: t('ia_preventive_desc'), icon: Activity }
-            ].map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <motion.div 
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={i} 
-                  className="p-10 bg-white rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all group"
-                >
-                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600 mb-8 group-hover:bg-blue-600 group-hover:text-white transition-all mx-auto">
-                      <Icon className="w-8 h-8" />
-                   </div>
-                   <h4 className="text-xl font-bold text-slate-900 mb-4">{f.title}</h4>
-                   <p className="text-sm text-slate-500 font-medium leading-relaxed">{f.desc}</p>
-                </motion.div>
-              );
-            })}
-         </div>
-      </section>
-
-      {/* Multi-category Vaccinal Guide */}
-      <section className="py-32 bg-slate-50 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/30 blur-[100px] rounded-full"></div>
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h4 className="text-xs font-black text-blue-600 uppercase tracking-[0.4em] mb-4">{t('vaccination')}</h4>
-            <h2 className="text-5xl font-black text-slate-900 mb-6 tracking-tighter italic">{t('vaccine_info_title')}</h2>
-            <p className="text-slate-500 font-medium max-w-2xl mx-auto text-lg leading-relaxed">{t('vaccine_info_subtitle')}</p>
-          </div>
-
-          <div className="space-y-24">
-            {/* Children Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <Baby className="w-4 h-4 text-amber-500" />
-                  {t('child_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 text-left">
-                {[
-                  { name: 'BCG', badge: t('birth'), desc: t('bcg_desc'), dose: '1 injection' },
-                  { name: 'Polio', badge: t('6_weeks'), desc: t('polio_desc'), dose: 'Multiples + rappels' },
-                  { name: 'Pentavalent', badge: t('6_weeks'), desc: t('penta_desc'), dose: '3 injections' },
-                  { name: 'Pneumocoque', badge: t('6_weeks'), desc: t('pneumo_desc') },
-                  { name: 'Rotavirus', badge: t('6_weeks'), desc: t('rota_desc'), form: 'Orale' },
-                  { name: 'Rougeole', badge: t('9_months'), desc: t('rougeole_desc') },
-                  { name: 'Fièvre jaune', badge: t('9_months'), desc: t('yellow_fever_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} key={v.name} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all group">
-                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black uppercase tracking-widest mb-3 border border-blue-100">{v.badge}</span>
-                    <h4 className="text-lg font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight italic">{v.name}</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">{v.desc}</p>
-                    {(v.dose || v.form) && (
-                      <div className="pt-4 border-t border-slate-50 flex items-center gap-4">
-                        {v.dose && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.dose}</p>}
-                        {v.form && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.form}</p>}
-                      </div>
-                    )}
-                    <a href="#" className="mt-6 block text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-700 transition-colors">{t('view_details')} →</a>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Adults Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <UserPlus className="w-4 h-4 text-blue-500" />
-                  {t('adult_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 text-left">
-                {[
-                  { name: 'Hépatite B', desc: t('hep_b_desc'), dose: '3 injections' },
-                  { name: 'Typhoïde', desc: t('typhoid_desc') },
-                  { name: 'Tétanos', desc: t('tetanus_desc'), reminder: t('10_years') },
-                  { name: 'HPV', desc: t('hpv_desc') },
-                  { name: 'Grippe', desc: t('flu_desc'), reminder: 'Annuel' },
-                  { name: 'Rage', desc: t('rage_desc') },
-                  { name: 'Pneumocoque', desc: t('pneumo_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} key={v.name} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-all group">
-                    <h4 className="text-lg font-black text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors uppercase tracking-tight italic">{v.name}</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">{v.desc}</p>
-                    {(v.dose || v.reminder) && (
-                      <div className="pt-4 border-t border-slate-50 flex items-center gap-4">
-                        {v.dose && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.dose}</p>}
-                        {v.reminder && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.reminder}</p>}
-                      </div>
-                    )}
-                    <a href="#" className="mt-6 block text-[9px] font-black text-emerald-500 uppercase tracking-widest hover:text-emerald-700 transition-colors">{t('view_details')} →</a>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Travelers Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-purple-500" />
-                  {t('traveler_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
-                {[
-                  { name: 'Fièvre jaune', desc: 'Souvent obligatoire pour voyager. Protection à vie préconisée.' },
-                  { name: 'Choléra', desc: t('cholera_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} key={v.name} className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm hover:border-purple-300 transition-all group flex gap-6 items-center">
-                    <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500 shrink-0 border border-purple-100">
-                      <ShieldCheck className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 mb-1 leading-none uppercase tracking-tight italic group-hover:text-purple-600 transition-colors">{v.name}</h4>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">{v.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-20">
-             <button onClick={onEnterPortal} className="px-10 py-5 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] shadow-[0_20px_40px_rgba(37,99,235,0.2)] hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all">
-                {t('confirm_booking')}
-             </button>
-          </div>
-
-          <div className="mt-24 p-12 bg-white rounded-[40px] border border-slate-200 shadow-sm text-left relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-8 opacity-5">
-                <FileText className="w-40 h-40" />
-             </div>
-             <h3 className="text-2xl font-black text-slate-900 mb-8 italic flex items-center gap-3">
-                <ShieldCheck className="w-6 h-6 text-blue-600" />
-                Informations & Recommandations
-             </h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                   <div>
-                      <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2">L'importance des Rappels</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed">
-                        L'immunité conférée par certains vaccins peut diminuer avec le temps. Les rappels (comme pour le Tétanos tous les 10 ans) sont essentiels pour maintenir une protection optimale tout au long de la vie.
-                      </p>
-                   </div>
-                   <div>
-                      <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2">Protocoles par Âge</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed">
-                        Le système immunitaire évolue. Les nourrissons reçoivent des vaccins fondamentaux (BCG, Polio) tandis que les adolescents et adultes ont des besoins spécifiques liés à leur environnement (HPV, Grippe).
-                      </p>
-                   </div>
-                </div>
-                <div className="space-y-6">
-                   <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Besoin d'un conseil ?</p>
-                      <p className="text-sm text-slate-700 font-bold mb-4 italic leading-snug">
-                        "Prenez rendez-vous avec nos omnipraticiens pour établir un calendrier vaccinal personnalisé."
-                      </p>
-                      <button onClick={onEnterPortal} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
-                        Consulter un médecin →
-                      </button>
-                   </div>
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-32 bg-slate-900 overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-white to-transparent opacity-10"></div>
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h4 className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] mb-4">{t('patient_reviews')}</h4>
-            <h3 className="text-4xl font-black text-white tracking-tight">{t('community_trust')}</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { name: "Moussa Camara", text: t('review_1'), rating: 5, date: "2 jours" },
-              { name: "Fatoumata Diallo", text: t('review_2'), rating: 5, date: "1 semaine" },
-              { name: "Ousmane Keita", text: t('review_3'), rating: 4, date: "3 jours" }
-            ].map((rev, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-slate-800/50 backdrop-blur-xl border border-slate-700 p-8 rounded-[40px] hover:border-blue-500/30 transition-all group"
-              >
-                <div className="flex gap-1 mb-6">
-                  {[...Array(rev.rating)].map((_, i) => (
-                    <div key={i} className="w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center text-[8px] text-amber-900 font-bold">★</div>
-                  ))}
-                </div>
-                <p className="text-slate-300 font-medium italic mb-8 leading-relaxed">"{rev.text}"</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-xs font-black text-slate-400 uppercase overflow-hidden border border-slate-600">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${rev.name}`} alt="avatar" />
-                  </div>
-                  <div>
-                    <h5 className="text-white font-bold text-sm">{rev.name}</h5>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{rev.date}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <footer className="py-20 border-t border-slate-100 bg-white">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-600 flex items-center justify-center p-2 shadow-lg shadow-blue-100">
-              <Logo className="text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-black text-slate-800 tracking-tighter uppercase leading-none mb-1">{t('app_name')}</span>
-              <div className="flex items-center gap-1 opacity-40">
-                 <div className="flex w-3 h-2 overflow-hidden rounded-[1px]">
-                    <div className="flex-1 bg-[#CE1126]"></div>
-                    <div className="flex-1 bg-[#FCD116]"></div>
-                    <div className="flex-1 bg-[#009460]"></div>
-                 </div>
-                 <span className="text-[7px] font-black uppercase tracking-widest leading-none">Conakry, Guinée</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-center gap-4">
-            <SocialLinks />
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic">
-              {t('app_catchphrase')}
-            </p>
-          </div>
-
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">@2026 KYAM MEDICAL CENTER. ALL RIGHTS RESERVED.</p>
-        </div>
-      </footer>
-    </div>
-  );
-};
 
 const Login = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => void }) => {
   const { login } = useAuth();
@@ -2964,13 +1814,41 @@ const Register = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
+const parseJwt = (token: string) => {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+};
+
 export default function App() {
   const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('kyam_user');
-    return saved ? JSON.parse(saved) : null;
+    const savedToken = localStorage.getItem('kyam_token');
+    const savedUser = localStorage.getItem('kyam_user');
+    
+    if (savedToken) {
+      const decoded = parseJwt(savedToken);
+      if (decoded && decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem('kyam_token');
+        localStorage.removeItem('kyam_user');
+        return null;
+      }
+    }
+    
+    return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [token, setToken] = useState<string | null>(localStorage.getItem('kyam_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem('kyam_token');
+    if (saved) {
+      const decoded = parseJwt(saved);
+      if (decoded && decoded.exp * 1000 < Date.now()) {
+        return null; // Already removed in setUser's initializer
+      }
+    }
+    return saved;
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -3007,12 +1885,23 @@ export default function App() {
 
   useEffect(() => {
     if (token && user) {
-      const newSocket = io({
-        auth: { token }
+      // Connect to the same origin with explicit options
+      const newSocket = io(window.location.origin, {
+        auth: { token },
+        transports: ['websocket', 'polling']
       });
       
       newSocket.on('connect', () => {
+        console.log('Socket connected, emitting authenticate');
         newSocket.emit('authenticate', token);
+      });
+
+      newSocket.on('auth_error', (err) => {
+        console.error('Socket authentication error:', err.message);
+        if (err.message === 'jwt expired' || err.message === 'User not found') {
+          logout();
+          alert(t('session_expired_relogin'));
+        }
       });
 
       newSocket.on('notification', (notif) => {
@@ -3050,109 +1939,111 @@ export default function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, notifications }}>
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col h-screen overflow-hidden">
-        {!user ? (
-          isRegistering ? (
-             <Register onBack={() => setIsRegistering(false)} />
-          ) : (
-            isVisitingLanding ? (
-              <LandingPage onEnterPortal={() => setIsVisitingLanding(false)} />
+    <AuthContext.Provider value={{ user, token, socket, login, logout, notifications }}>
+      <Suspense fallback={<Loading />}>
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col h-screen overflow-hidden">
+          {!user ? (
+            isRegistering ? (
+               <Register onBack={() => setIsRegistering(false)} />
             ) : (
-              <Login onBack={() => setIsVisitingLanding(true)} onRegister={() => setIsRegistering(true)} />
+              isVisitingLanding ? (
+                <LandingPage onEnterPortal={() => setIsVisitingLanding(false)} />
+              ) : (
+                <Login onBack={() => setIsVisitingLanding(true)} onRegister={() => setIsRegistering(true)} />
+              )
             )
-          )
-        ) : (
-          <>
-            {user.mustChangePassword && <ChangePasswordView onSuccess={handlePasswordSuccess} />}
-            <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 z-50">
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setIsMobileMenuOpen(true)}
-                  className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-blue-600 transition-colors"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-                <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center text-white font-bold p-1 overflow-hidden shadow-md">
-                   <Logo className="w-full h-full text-white" />
-                </div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-800 uppercase">{t('app_name')}</h1>
-                <span className="ml-4 px-2 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded border border-amber-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                  {t('system_live')}
-                </span>
-              </div>
-              <div className="flex items-center gap-6">
-                <LanguageSwitcher />
-                <div className="flex gap-4">
-                  <div className="text-right">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{t('server_pulse')}</p>
-                    <p className="text-xs font-mono font-medium">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
-                  </div>
-                  <div className="w-px h-8 bg-slate-200"></div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{t('live_connection')}</p>
-                    <p className={`text-xs font-bold ${socket?.connected ? 'text-blue-600' : 'text-slate-400'}`}>{socket?.connected ? t('active') : t('ready')}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-                  <ActivityModeSwitcher />
-                  <NotificationCenter notifications={notifications} />
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-800">{user.fullName}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black leading-none">{user.role}</p>
-                  </div>
-                  <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-white shadow-sm overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="avatar" referrerPolicy="no-referrer" />
-                  </div>
-                </div>
-              </div>
-            </header>
-
-            <div className="flex-1 flex overflow-hidden">
-              <Navigation 
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab} 
-                isOpen={isMobileMenuOpen}
-                onClose={() => setIsMobileMenuOpen(false)}
-              />
-              <main className="flex-1 overflow-auto bg-slate-50 custom-scrollbar">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, x: 5 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -5 }}
-                    transition={{ duration: 0.15 }}
+          ) : (
+            <>
+              {user.mustChangePassword && <ChangePasswordView onSuccess={handlePasswordSuccess} />}
+              <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 z-50">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-blue-600 transition-colors"
                   >
-                    {activeTab === 'dashboard' && <Dashboard />}
-                    {activeTab === 'appointments' && <AppointmentView />}
-                    {activeTab === 'vaccinations' && <VaccinationView />}
-                    {activeTab === 'records' && <RecordsView />}
-                    {activeTab === 'my-records' && <RecordsView />}
-                    {activeTab === 'payments' && <PaymentsView />}
-                    {activeTab === 'billing' && <PaymentsView />}
-                    {activeTab === 'users' && <UsersView />}
-                    {activeTab === 'family' && <FamilyView />}
-                  </motion.div>
-                </AnimatePresence>
-              </main>
-              <InternalChat />
-            </div>
+                    <Menu className="w-6 h-6" />
+                  </button>
+                  <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center text-white font-bold p-1 overflow-hidden shadow-md">
+                     <Logo className="w-full h-full text-white" />
+                  </div>
+                  <h1 className="text-xl font-bold tracking-tight text-slate-800 uppercase">{t('app_name')}</h1>
+                  <span className="ml-4 px-2 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded border border-amber-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                    {t('system_live')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-6">
+                  <LanguageSwitcher />
+                  <div className="flex gap-4">
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{t('server_pulse')}</p>
+                      <p className="text-xs font-mono font-medium">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</p>
+                    </div>
+                    <div className="w-px h-8 bg-slate-200"></div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{t('live_connection')}</p>
+                      <p className={`text-xs font-bold ${socket?.connected ? 'text-blue-600' : 'text-slate-400'}`}>{socket?.connected ? t('active') : t('ready')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
+                    <ActivityModeSwitcher />
+                    <NotificationCenter notifications={notifications} />
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-slate-800">{user.fullName}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black leading-none">{user.role}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-white shadow-sm overflow-hidden">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="avatar" referrerPolicy="no-referrer" />
+                    </div>
+                  </div>
+                </div>
+              </header>
 
-            <footer className="bg-white border-t border-slate-200 h-8 flex items-center justify-between px-6 shrink-0 z-50">
-              <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> {t('whatsapp_api')}: {t('online')}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-green-500 rounded-full"></span> {t('sms_fallback')}: {t('ready')}</span>
-                <span className="flex items-center gap-1.5"><span className={`w-2 h-2 ${socket?.connected ? 'bg-blue-500' : 'bg-slate-300'} rounded-full`}></span> {socket?.connected ? `${t('real_time')}: ${t('connected')}` : `${t('offline_sync')}: 100%`}</span>
+              <div className="flex-1 flex overflow-hidden">
+                <Navigation 
+                  activeTab={activeTab} 
+                  setActiveTab={setActiveTab} 
+                  isOpen={isMobileMenuOpen}
+                  onClose={() => setIsMobileMenuOpen(false)}
+                />
+                <main className="flex-1 overflow-auto bg-slate-50 custom-scrollbar">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, x: 5 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -5 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {activeTab === 'dashboard' && <Dashboard />}
+                      {activeTab === 'appointments' && <AppointmentView />}
+                      {activeTab === 'vaccinations' && <VaccinationView />}
+                      {activeTab === 'records' && <RecordsView />}
+                      {activeTab === 'my-records' && <RecordsView />}
+                      {activeTab === 'payments' && <PaymentsView />}
+                      {activeTab === 'billing' && <PaymentsView />}
+                      {activeTab === 'users' && <UsersView />}
+                      {activeTab === 'family' && <FamilyView />}
+                    </motion.div>
+                  </AnimatePresence>
+                </main>
+                <InternalChat />
               </div>
-              <div className="text-[9px] font-mono text-slate-400 font-bold uppercase">
-                {t('core_engine')}: v4.12.0-STABLE_PROD
-              </div>
-            </footer>
-          </>
-        )}
-      </div>
+
+              <footer className="bg-white border-t border-slate-200 h-8 flex items-center justify-between px-6 shrink-0 z-50">
+                <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> {t('whatsapp_api')}: {t('online')}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-green-500 rounded-full"></span> {t('sms_fallback')}: {t('ready')}</span>
+                  <span className="flex items-center gap-1.5"><span className={`w-2 h-2 ${socket?.connected ? 'bg-blue-500' : 'bg-slate-300'} rounded-full`}></span> {socket?.connected ? `${t('real_time')}: ${t('connected')}` : `${t('offline_sync')}: 100%`}</span>
+                </div>
+                <div className="text-[9px] font-mono text-slate-400 font-bold uppercase">
+                  {t('core_engine')}: v4.12.0-STABLE_PROD
+                </div>
+              </footer>
+            </>
+          )}
+        </div>
+      </Suspense>
     </AuthContext.Provider>
   );
 }
