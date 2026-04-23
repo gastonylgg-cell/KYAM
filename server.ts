@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express-serve-static-core';
 import path from 'path';
+import fs from 'fs';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
@@ -16,11 +17,12 @@ const io = new Server(httpServer, {
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'kyam-medical-secret-key-2024';
+const DB_PATH = path.join(process.cwd(), 'db.json');
 
 app.use(express.json());
 
 // --- MOCK DATABASE ---
-const db = {
+let db = {
   users: [] as any[],
   patients: [] as any[],
   families: [] as any[],
@@ -45,6 +47,77 @@ const db = {
   messages: [] as any[],
   pending_2fa: [] as { email: string, code: string, expires: Date }[],
 };
+
+// --- PERSISTENCE ---
+const saveDb = () => {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  } catch (err) {
+    console.error('Failed to save DB:', err);
+  }
+};
+
+const loadDb = () => {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const data = fs.readFileSync(DB_PATH, 'utf-8');
+      db = { ...db, ...JSON.parse(data) };
+      console.log('[DB] Loaded from disk');
+    }
+  } catch (err) {
+    console.error('Failed to load DB:', err);
+  }
+};
+
+const seedDb = async () => {
+  if (db.users.length === 0) {
+    console.log('[DB] Seeding initial data...');
+    const hp = await bcrypt.hash('admin123', 10);
+    const admin = {
+      id: uuidv4(),
+      email: 'gastonylgg@gmail.com',
+      password: hp,
+      fullName: 'Administrateur Système',
+      role: 'ADMIN',
+      createdAt: new Date(),
+    };
+    
+    const admin2 = {
+      id: uuidv4(),
+      email: 'test@kyam.gn',
+      password: hp,
+      fullName: 'Admin Test',
+      role: 'ADMIN',
+      createdAt: new Date(),
+    };
+
+    const doctorHp = await bcrypt.hash('doctor123', 10);
+    const doctor = {
+      id: uuidv4(),
+      email: 'doctor@kyam.gn',
+      password: doctorHp,
+      fullName: 'Pr. Mamadi Condé',
+      role: 'DOCTOR',
+      createdAt: new Date(),
+    };
+
+    db.users.push(admin, admin2, doctor);
+    db.doctors.push({
+      id: uuidv4(),
+      userId: doctor.id,
+      firstName: 'Mamadi',
+      lastName: 'Condé',
+      specialty: 'Cardiologie',
+      registrationNumber: 'RPPS-1234567890',
+      currentActivity: 'CONSULTATION',
+      createdAt: new Date(),
+    });
+    saveDb();
+  }
+};
+
+loadDb();
+seedDb();
 
 // --- REAL-TIME HELPERS ---
 const notifyUser = (userId: string, event: string, data: any) => {
@@ -192,6 +265,7 @@ app.post('/api/auth/register', async (req: any, res) => {
   };
 
   db.users.push(newUser);
+  saveDb();
 
   if (newUser.role === 'PATIENT') {
     const { familyId } = req.body;
@@ -203,6 +277,7 @@ app.post('/api/auth/register', async (req: any, res) => {
       familyId: familyId || null,
       createdAt: new Date(),
     });
+    saveDb();
   } else if (newUser.role === 'DOCTOR') {
     const { specialty, registrationNumber, firstName, lastName } = req.body;
     db.doctors.push({
@@ -215,6 +290,7 @@ app.post('/api/auth/register', async (req: any, res) => {
       currentActivity: 'CONSULTATION', // Default
       createdAt: new Date(),
     });
+    saveDb();
   }
 
   const registrationToken = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '24h' });
@@ -233,6 +309,7 @@ app.post('/api/doctor/activity', protect, restrictTo('DOCTOR'), (req: any, res) 
   if (doctorIndex === -1) return res.status(404).json({ message: 'Doctor profile not found' });
   
   db.doctors[doctorIndex].currentActivity = activity;
+  saveDb();
   res.json(db.doctors[doctorIndex]);
 });
 
@@ -244,7 +321,8 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   // 2FA for Staff (DOCTOR, SECRETARY, ADMIN)
-  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role) && user.email !== 'test') {
+  const isTestAccount = user.email === 'test@kyam.gn' || user.email === 'doctor@kyam.gn';
+  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role) && !isTestAccount) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 5 * 60000); // 5 minutes
     
@@ -308,6 +386,7 @@ app.post('/api/auth/change-password', protect, async (req: any, res) => {
 
   db.users[userIndex].password = hashedPassword;
   db.users[userIndex].mustChangePassword = false;
+  saveDb();
 
   res.json({ message: 'Mot de passe mis à jour avec succès' });
 });
@@ -319,6 +398,7 @@ app.get('/api/agenda/settings', protect, (req, res) => {
 
 app.post('/api/agenda/settings', protect, restrictTo('ADMIN', 'DOCTOR'), (req, res) => {
   db.clinic_settings = { ...db.clinic_settings, ...req.body };
+  saveDb();
   res.json(db.clinic_settings);
 });
 
@@ -330,11 +410,13 @@ app.post('/api/agenda/blocked', protect, restrictTo('ADMIN', 'DOCTOR'), (req, re
   const { start, end, reason } = req.body;
   const blocked = { id: uuidv4(), start, end, reason, createdAt: new Date() };
   db.blocked_slots.push(blocked);
+  saveDb();
   res.status(201).json(blocked);
 });
 
 app.delete('/api/agenda/blocked/:id', protect, restrictTo('ADMIN', 'DOCTOR'), (req, res) => {
   db.blocked_slots = db.blocked_slots.filter(b => b.id !== req.params.id);
+  saveDb();
   res.status(204).send();
 });
 
@@ -399,6 +481,7 @@ app.post('/api/appointments', protect, restrictTo('PATIENT', 'ADMIN', 'SECRETARY
     checkInTime: null
   };
   db.queue.push(queueEntry);
+  saveDb();
 
   // Notify Patient and Staff (Simulation of Email/SMS)
   console.log(`[REMINDER ENGINE] Scheduled reminder to ${req.user.email} (or Phone: ${req.user.phone}) for ${start.toLocaleString()}`);
@@ -450,6 +533,7 @@ app.put('/api/appointments/:id', protect, (req: any, res) => {
   appointment.startTime = new Date(startTime);
   appointment.endTime = new Date(new Date(startTime).getTime() + db.clinic_settings.slotDurationMinutes * 60000);
   appointment.reason = reason;
+  saveDb();
   res.json(appointment);
 });
 
@@ -472,6 +556,7 @@ app.delete('/api/appointments/:id', protect, (req: any, res) => {
   }
 
   appointment.status = 'CANCELLED';
+  saveDb();
   res.status(204).send();
 });
 
@@ -489,6 +574,7 @@ app.post('/api/appointments/:id/no-show', protect, restrictTo('DOCTOR', 'ADMIN',
     patient.missedAppointmentsCount = (patient.missedAppointmentsCount || 0) + 1;
     console.log(`[POLICE CLINIQUE] Patient ${patient.id} manqué: ${patient.missedAppointmentsCount}/3`);
   }
+  saveDb();
 
   res.json({ message: 'Rendez-vous marqué comme non honoré', missedCount: patient?.missedAppointmentsCount });
 });
@@ -532,6 +618,7 @@ app.post('/api/records', protect, restrictTo('DOCTOR'), (req: any, res) => {
     createdAt: new Date()
   };
   db.medical_records.push(record);
+  saveDb();
   
   const patient = db.patients.find(p => p.id === patientId);
   if (patient) notifyUser(patient.userId, 'NEW_MEDICAL_RECORD', { doctorName: req.user.fullName });
@@ -550,6 +637,7 @@ app.post('/api/family/create', protect, (req: any, res) => {
   if (patientIndex !== -1) {
     db.patients[patientIndex].familyId = family.id;
   }
+  saveDb();
   
   res.status(201).json(family);
 });
@@ -563,6 +651,7 @@ app.post('/api/family/join', protect, (req: any, res) => {
   if (patientIndex !== -1) {
     db.patients[patientIndex].familyId = family.id;
   }
+  saveDb();
   
   res.json({ message: 'Rejoint avec succès' });
 });
@@ -651,6 +740,7 @@ app.post('/api/queue/checkin', protect, restrictTo('ADMIN', 'SECRETARY'), (req: 
   };
   
   db.queue.push(queueEntry);
+  saveDb();
   notifyStaff('PATIENT_CHECKED_IN', { appointmentId });
   res.status(201).json(queueEntry);
 });
@@ -661,6 +751,7 @@ app.post('/api/queue/complete', protect, restrictTo('DOCTOR', 'ADMIN'), (req: an
   if (index === -1) return res.status(404).json({ message: 'Entrée non trouvée' });
   
   const completed = db.queue.splice(index, 1)[0];
+  saveDb();
   notifyStaff('PATIENT_TREATED', { queueId });
   res.json({ message: 'Traité avec succès', completed });
 });
@@ -691,6 +782,7 @@ app.post('/api/messages', protect, restrictTo('ADMIN', 'SECRETARY', 'DOCTOR'), (
   };
   
   db.messages.push(message);
+  saveDb();
   
   // Real-time broadcast
   io.emit('new_chat_message', message);
@@ -765,6 +857,7 @@ app.post('/api/payments/initiate', protect, (req: any, res) => {
   };
 
   db.payments.push(payment);
+  saveDb();
   
   notifyUser(req.user.id, 'PAYMENT_RECEIVED', { amount, transactionId });
   notifyStaff('REVENUE_ALERT', { amount, provider });
@@ -792,16 +885,25 @@ app.post('/api/medications', protect, restrictTo('ADMIN', 'DOCTOR'), (req, res) 
   const { name, dosage, type } = req.body;
   const medication = { id: uuidv4(), name, dosage, type };
   db.medications.push(medication);
+  saveDb();
   res.status(201).json(medication);
 });
 
 app.delete('/api/medications/:id', protect, restrictTo('ADMIN', 'DOCTOR'), (req, res) => {
   db.medications = db.medications.filter(m => m.id !== req.params.id);
+  saveDb();
   res.status(204).send();
 });
 
 // --- VITE MIDDLEWARE ---
 async function startServer() {
+  loadDb();
+
+  // API 404 handler - MUST be before Vite/Static middleware
+  app.use('/api', (req, res) => {
+    res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -836,18 +938,44 @@ async function startServer() {
     }
 
     // Seed test account for pre-deployment if doesn't exist
-    if (!db.users.find(u => u.email === 'test')) {
+    if (!db.users.find(u => u.email === 'test@kyam.gn')) {
       const hashedTestPassword = await bcrypt.hash('test', 10);
-      db.users.push({
+      const testAdmin = {
         id: uuidv4(),
-        email: 'test',
+        email: 'test@kyam.gn',
         password: hashedTestPassword,
-        fullName: 'Compte de Test',
-        role: 'ADMIN',
+        fullName: 'Compte Test Admin',
+        role: 'ADMIN' as const,
         mustChangePassword: false,
         createdAt: new Date()
+      };
+      db.users.push(testAdmin);
+      
+      const hashedDoctorPassword = await bcrypt.hash('test', 10);
+      const testDoctorUser = {
+        id: uuidv4(),
+        email: 'doctor@kyam.gn',
+        password: hashedDoctorPassword,
+        fullName: 'Dr. Test Praticien',
+        role: 'DOCTOR' as const,
+        mustChangePassword: false,
+        createdAt: new Date()
+      };
+      db.users.push(testDoctorUser);
+      db.doctors.push({
+        id: uuidv4(),
+        userId: testDoctorUser.id,
+        firstName: 'Dr.',
+        lastName: 'Test',
+        specialty: 'Diagnostic Général',
+        registrationNumber: 'RPPS-TEST-001',
+        currentActivity: 'CONSULTATION',
+        createdAt: new Date(),
       });
-      console.log('[SEED] Test account created: test / test (MFA Bypassed)');
+
+      console.log('[SEED] Test accounts created:');
+      console.log(' - Admin: test@kyam.gn / test');
+      console.log(' - Doctor: doctor@kyam.gn / test');
     }
     console.log(`Server running on http://localhost:${PORT}`);
   });

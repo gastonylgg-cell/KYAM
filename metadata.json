@@ -1,10 +1,7 @@
 {
   "name": "KYAM Medical Center",
   "description": "Production-grade healthcare platform featuring appointment booking, EMR, vaccination intelligence, and AI-powered patient scoring.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ],
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "AI-powered medical insights",
     "Real-time patient queue management",

@@ -1,5 +1,6 @@
 {
-  "name": "react-example",
+  "name": "kyam-medical-portal",
+  "description": "Production-grade healthcare platform for the Republic of Guinea with AI-powered insights, real-time queue management, and multi-language support.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

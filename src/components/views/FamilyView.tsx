@@ -21,7 +21,9 @@ const FamilyView = () => {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
     .then(res => res.ok ? res.json() : null)
-    .then(data => setFamily(data?.error ? null : data))
+    .then(data => {
+      if (data && !data.error) setFamily(data);
+    })
     .catch(() => setFamily(null));
   };
 

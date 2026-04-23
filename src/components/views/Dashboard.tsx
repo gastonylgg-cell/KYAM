@@ -8,7 +8,9 @@ import {
   Calendar, 
   X, 
   Clock, 
-  Activity 
+  Activity,
+  CreditCard,
+  Signal
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -36,7 +38,9 @@ const PractitionerCard = () => {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
       })
       .then(res => res.ok ? res.json() : null)
-      .then(data => setProfile(data?.error ? null : data))
+      .then(data => {
+        if (data && !data.error) setProfile(data);
+      })
       .catch(() => setProfile(null));
     }
   }, [user]);
@@ -44,32 +48,59 @@ const PractitionerCard = () => {
   if (user?.role !== 'DOCTOR' || !profile) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-blue-900 to-indigo-900 text-white p-8 rounded-[32px] shadow-2xl relative overflow-hidden group mb-8">
-      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-         <Logo className="w-32 h-32 text-white" />
-      </div>
-      <div className="relative z-10 flex flex-col md:flex-row gap-6 md:items-center">
-        <div className="w-20 h-20 bg-white/10 rounded-3xl backdrop-blur-xl border border-white/20 flex items-center justify-center shrink-0">
-           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="avatar" className="w-16 h-16" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-xs font-black text-blue-300 uppercase tracking-widest mb-1">{t('practitioner_card')}</h4>
-          <p className="text-xl font-black tracking-tight uppercase">{user.fullName}</p>
-          <div className="grid grid-cols-2 gap-4 md:flex md:gap-8 mt-4">
-            <div>
-              <p className="text-[8px] font-black uppercase opacity-50 text-blue-100 mb-0.5">{t('specialty')}</p>
-              <p className="text-[10px] font-bold text-white">{profile.specialty}</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="bg-slate-900 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group mb-10 border border-slate-800"
+    >
+      <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full -mr-20 -mt-20 group-hover:bg-blue-600/20 transition-all duration-700"></div>
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/5 blur-[100px] rounded-full -ml-32 -mb-32"></div>
+      
+      <div className="relative z-10 flex flex-col lg:flex-row gap-10 lg:items-center">
+        <div className="relative shrink-0">
+          <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[2rem] p-1 shadow-2xl">
+            <div className="w-full h-full bg-slate-900 rounded-[1.8rem] overflow-hidden">
+               <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="avatar" className="w-full h-full object-cover" />
             </div>
-            <div className="md:border-l md:border-white/10 md:pl-8">
-              <p className="text-[8px] font-black uppercase opacity-50 text-blue-100 mb-0.5">{t('practitioner_number')}</p>
-              <p className="text-[10px] font-bold text-white font-mono">{profile.registrationNumber}</p>
+          </div>
+          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full border-4 border-slate-900 flex items-center justify-center">
+             <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-500/20">
+              {t('practitioner_card')}
+            </span>
+          </div>
+          <h1 className="text-4xl font-display font-black tracking-tighter uppercase italic leading-none mb-6">
+            {user.fullName}
+          </h1>
+          
+          <div className="flex flex-wrap gap-12">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">{t('specialty')}</p>
+              <p className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-500" />
+                {profile.specialty}
+              </p>
+            </div>
+            <div className="w-px h-10 bg-slate-800 hidden md:block"></div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">{t('practitioner_number')}</p>
+              <p className="text-sm font-bold text-slate-100 font-mono tracking-wider">{profile.registrationNumber}</p>
             </div>
           </div>
         </div>
-        <div className="md:ml-auto relative z-10">
-           <div className={`px-4 py-3 rounded-xl border ${profile.currentActivity === 'VACCINATION' ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'} text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit`}>
-              <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${profile.currentActivity === 'VACCINATION' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
-              {profile.currentActivity === 'VACCINATION' ? t('type_vaccination') : t('type_consultation')}
+
+        <div className="lg:ml-auto">
+           <div className={`p-6 rounded-3xl border backdrop-blur-xl ${profile.currentActivity === 'VACCINATION' ? 'bg-amber-500/5 border-amber-500/20 text-amber-500' : 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500'} flex flex-col items-center justify-center gap-2`}>
+              <Activity className="w-6 h-6 mb-1" />
+              <div className="text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Activité Actuelle</p>
+                <p className="text-xs font-black uppercase tracking-tight">{profile.currentActivity === 'VACCINATION' ? t('type_vaccination') : t('type_consultation')}</p>
+              </div>
            </div>
         </div>
       </div>
@@ -85,8 +116,9 @@ const MyAppointments = () => {
     fetch('/api/appointments/me', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(data => setAppointments(Array.isArray(data) ? data : []));
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setAppointments(Array.isArray(data) ? data : []))
+    .catch(() => setAppointments([]));
   };
 
   useEffect(() => {
@@ -107,11 +139,17 @@ const MyAppointments = () => {
   };
 
   return (
-    <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm p-6 overflow-hidden mt-6">
-      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 mb-6 flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-blue-600" />
-        {t('my_appointments')}
-      </h3>
+    <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm p-10 overflow-hidden">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h3 className="text-xl font-display font-black uppercase tracking-tighter italic text-slate-800">Mes Rendez-vous</h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Planification Électronique</p>
+        </div>
+        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+           <Calendar className="w-6 h-6 text-blue-600" />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {appointments.filter(a => a.status !== 'CANCELLED').map(appt => {
           const appDate = new Date(appt.startTime);
@@ -122,36 +160,44 @@ const MyAppointments = () => {
           const canAction = now.getTime() < limitTime;
 
           return (
-            <div key={appt.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between group hover:border-blue-200 transition-all">
-              <div>
-                <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight">{appt.type === 'VACCINATION' ? 'Vaccination' : 'Consultation'}</p>
-                <p className="text-[11px] text-slate-500 font-bold truncate max-w-[150px]">{appt.reason}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px] font-mono font-bold tracking-tighter">
-                    {format(appDate, 'dd/MM/yyyy HH:mm')}
-                  </div>
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              key={appt.id} 
+              className="p-6 bg-slate-50 border border-slate-100 rounded-3xl flex items-center justify-between group hover:border-blue-200 transition-all shadow-sm hover:shadow-xl hover:shadow-blue-500/5"
+            >
+              <div className="flex gap-4 items-center">
+                <div className="w-12 h-12 bg-white rounded-2xl flex flex-col items-center justify-center border border-slate-100 shrink-0">
+                   <span className="text-[8px] font-black uppercase text-blue-600">{format(appDate, 'MMM')}</span>
+                   <span className="text-lg font-black text-slate-800 leading-none">{format(appDate, 'dd')}</span>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    {appt.type === 'VACCINATION' ? 'Vaccination' : 'Consultation'}
+                  </p>
+                  <p className="text-sm font-bold text-slate-800 truncate max-w-[120px]">{appt.reason}</p>
+                  <p className="text-[11px] font-mono font-black text-blue-600 mt-1">{format(appDate, 'HH:mm')}</p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="ml-4">
                 {canAction ? (
-                  <button onClick={() => handleCancel(appt.id)} className="p-2.5 bg-white text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm border border-slate-100">
+                  <button onClick={() => handleCancel(appt.id)} className="p-3 bg-white text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-slate-100">
                     <X className="w-4 h-4" />
                   </button>
                 ) : (
                   <button 
-                    onClick={() => alert("Veuillez contacter directement le secrétariat du centre médical pour toute annulation ou modification moins de 12h avant le rendez-vous.")}
-                    className="p-2 bg-slate-200 text-slate-400 rounded-xl hover:bg-slate-300 transition-all"
+                    onClick={() => alert("Veuillez contacter le centre médical pour toute modification.")}
+                    className="p-3 bg-slate-200 text-slate-400 rounded-2xl cursor-help hover:bg-slate-300 transition-all"
                   >
                     <Clock className="w-4 h-4" />
                   </button>
                 )}
               </div>
-            </div>
+            </motion.div>
           )
         })}
         {appointments.filter(a => a.status !== 'CANCELLED').length === 0 && (
-          <div className="col-span-full py-10 text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">{t('no_events')}</p>
+          <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-100 rounded-[2.5rem]">
+            <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.4em]">{t('no_events')}</p>
           </div>
         )}
       </div>
@@ -182,75 +228,88 @@ const Dashboard = () => {
   }, []);
 
   const stats = [
-    { label: t('today_revenue'), value: liveStats?.revenue !== undefined ? liveStats.revenue.toLocaleString() : '...', detail: 'GNF', color: 'blue', sub: `↑ ${liveStats ? 'LIFETIME' : ''}`, mono: true },
-    { label: t('stats_attendance'), value: liveStats?.attendance !== undefined ? liveStats.attendance : '...', detail: 'PATIENTS', color: 'blue', sub: t('active_active') },
-    { label: t('avg_wait'), value: liveStats?.avgWait !== undefined ? liveStats.avgWait : '...', detail: t('optimized_queue'), color: 'slate' },
-    { label: t('stats_momo'), value: liveStats?.momoRevenue !== undefined ? (liveStats.momoRevenue / 1000).toFixed(0) + 'k' : '...', detail: 'GNF', color: 'orange', sub: t('momo_guinee') },
+    { label: t('today_revenue'), value: liveStats?.revenue !== undefined ? liveStats.revenue.toLocaleString() : '...', detail: 'GNF', icon: CreditCard, color: 'emerald' },
+    { label: t('stats_attendance'), value: liveStats?.attendance !== undefined ? liveStats.attendance : '...', detail: 'PATIENTS', icon: Users, color: 'blue' },
+    { label: t('avg_wait'), value: liveStats?.avgWait !== undefined ? liveStats.avgWait : '...', detail: 'MINUTES', icon: Clock, color: 'indigo' },
+    { label: t('stats_momo'), value: liveStats?.momoRevenue !== undefined ? (liveStats.momoRevenue / 1000).toFixed(0) + 'k' : '...', detail: 'GNF', icon: Signal, color: 'orange' },
   ];
 
   return (
-    <div className="p-4 md:p-6 pb-24">
+    <div className="p-8 md:p-12 pb-32 max-w-7xl mx-auto">
       <PractitionerCard />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {stats.map((stat, i) => (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
+            transition={{ delay: i * 0.1 }}
             key={stat.label} 
-            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
+            className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all relative overflow-hidden group"
           >
-            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tight">{stat.label}</p>
-            <div className="flex items-baseline gap-1">
-              <h3 className={`text-2xl font-bold text-slate-800 ${stat.mono ? 'font-mono' : ''}`}>{stat.value}</h3>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">{stat.detail}</span>
+            <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-500/5 blur-[40px] rounded-full -mr-10 -mt-10 group-hover:bg-${stat.color}-500/10 transition-all`}></div>
+            <div className="flex justify-between items-start mb-6">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+               <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
             </div>
-            {stat.sub && (
-              <div className={`text-[10px] font-bold mt-2 ${stat.color === 'red' ? 'text-red-500 underline' : 'text-emerald-600'}`}>
-                {stat.sub}
-              </div>
-            )}
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-3xl font-display font-black text-slate-900 tracking-tighter italic">
+                {stat.value}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{stat.detail}</span>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
           {['ADMIN', 'DOCTOR', 'SECRETARY'].includes(user?.role || '') && (
-            <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-tighter italic">Flux d'Activité Clinique</h3>
-                  <div className="flex items-center gap-2">
+            <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden">
+               <div className="flex justify-between items-center mb-10">
+                  <div>
+                    <h3 className="text-xl font-display font-black text-slate-900 uppercase tracking-tighter italic">Performance Clinique</h3>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-1">Analyse des flux en temps réel</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
                     <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Temps Réel</span>
+                    <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest">LIVE SYNC</span>
                   </div>
                </div>
-               <div className="h-[200px] w-full">
+               <div className="h-[250px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={activityData}>
                       <defs>
                         <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
                           <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="8 8" vertical={false} stroke="#f1f5f9" />
                       <XAxis 
                         dataKey="date" 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} 
-                        dy={10}
+                        tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8', fontFamily: 'Outfit' }} 
+                        dy={15}
                       />
                       <YAxis hide />
                       <Tooltip 
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                        contentStyle={{ 
+                          borderRadius: '24px', 
+                          border: '1px solid #f1f5f9', 
+                          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', 
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          padding: '12px 20px',
+                          fontFamily: 'Outfit'
+                        }}
                       />
                       <Area 
                         type="monotone" 
                         dataKey="count" 
                         stroke="#2563eb" 
-                        strokeWidth={3} 
+                        strokeWidth={4} 
                         fillOpacity={1} 
                         fill="url(#colorCount)" 
                       />
@@ -263,57 +322,92 @@ const Dashboard = () => {
           {['ADMIN', 'DOCTOR', 'SECRETARY'].includes(user?.role || '') ? (
              <QueueView />
           ) : (
-            <div className="flex flex-col gap-6">
-              <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm p-8 flex flex-col items-center justify-center text-center">
-                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6">
-                    <ShieldCheck className="w-8 h-8" />
+            <div className="flex flex-col gap-8">
+              <div className="bg-slate-900 rounded-[3rem] p-12 relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[80px] rounded-full -mr-20 -mt-20"></div>
+                 <div className="relative z-10 flex flex-col items-center text-center">
+                    <div className="w-20 h-20 bg-blue-500 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/20 group-hover:rotate-6 transition-transform">
+                       <ShieldCheck className="w-10 h-10 text-white" />
+                    </div>
+                    <h3 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter mb-4">
+                      Votre Espace Santé
+                    </h3>
+                    <p className="text-sm text-slate-400 font-medium max-w-sm leading-relaxed mb-10">
+                      Accédez à vos services médicaux personnalisés : carnet de santé digital, suivi vaccinal et messagerie sécurisée.
+                    </p>
+                    <div className="flex gap-4">
+                       <button className="px-8 py-3 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all">Détails du dossier</button>
+                    </div>
                  </div>
-                 <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tighter mb-2">Bienvenue au portail KYAM</h3>
-                 <p className="text-xs text-slate-500 font-medium max-w-sm leading-relaxed mb-6">Votre santé, notre priorité numérique. Gérez vos rendez-vous, accédez à votre carnet vaccinal et communiquez avec vos praticiens en toute sécurité.</p>
               </div>
               <MyAppointments />
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="bg-slate-900 text-white p-5 rounded-xl border border-slate-800 shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{t('ai_pulse')}</h2>
-              <span className="text-[9px] text-slate-500 font-mono tracking-tighter">{t('ai_engine_v')}</span>
-            </div>
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-14 h-14 border-4 border-orange-500 rounded-full flex items-center justify-center font-black text-xl font-mono text-orange-400 shrink-0">84</div>
-              <div>
-                <p className="text-xs font-bold mb-1">{t('risk_factor')}</p>
-                <p className="text-[10px] text-slate-400 leading-relaxed uppercase tracking-tight">{t('localized_malaria')}</p>
+        <div className="flex flex-col gap-8">
+          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Analyse Bio-IA</h2>
+              <div className="w-8 h-8 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                 <Activity className="w-4 h-4 text-orange-500" />
               </div>
             </div>
-            <button className="w-full py-2.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors shadow-inner">
-              {t('generate_alerts')}
+            <div className="flex items-center gap-6 mb-10">
+              <div className="relative shrink-0">
+                <svg className="w-24 h-24">
+                  <circle cx="48" cy="48" r="40" stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                  <circle 
+                    cx="48" cy="48" r="40" stroke="#f97316" strokeWidth="8" fill="none" 
+                    strokeDasharray="251.2" strokeDashoffset="40" strokeLinecap="round"
+                    className="animate-[dash_2s_ease-out]"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center text-2xl font-display font-black text-slate-900 italic">84</div>
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-800 uppercase tracking-tight mb-1">Index Préventif</p>
+                <p className="text-[10px] text-slate-400 font-bold leading-tight uppercase">Saisonnalité active : Risque Paludisme modéré.</p>
+              </div>
+            </div>
+            <button className="w-full py-4 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10">
+               Actualiser l'analyse
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <h2 className="font-bold text-slate-700 text-xs uppercase tracking-tight">{t('recent_momo')}</h2>
+          <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm flex flex-col flex-1 overflow-hidden">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+              <h2 className="font-display font-black text-slate-900 text-sm uppercase tracking-tighter italic">Paiements Récents</h2>
+              <div className="flex gap-1">
+                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full opacity-50"></div>
+                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full opacity-20"></div>
+              </div>
             </div>
-            <div className="p-4 space-y-3 flex-1">
+            <div className="p-8 space-y-6 flex-1">
               {[
-                { provider: t('mtn_momo'), tx: 'Tx: 9942A82B', amount: '45,000', status: t('verified'), border: 'border-yellow-400' },
-                { provider: t('orange_momo'), tx: 'Tx: 3310X04L', amount: '120,000', status: t('verified'), border: 'border-orange-500' }
+                { provider: 'Orange Money', tx: 'TX_9942A', amount: '45k', color: 'orange' },
+                { provider: 'MTN Mobile', tx: 'TX_3310X', amount: '120k', color: 'yellow' }
               ].map((tx, idx) => (
-                <div key={idx} className={`flex items-center justify-between border-l-4 ${tx.border} pl-3 py-1`}>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">{tx.provider}</p>
-                    <p className="text-[9px] text-slate-400 font-mono leading-none mt-0.5">{tx.tx}</p>
+                <div key={idx} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 bg-${tx.color}-500/10 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12`}>
+                       <CreditCard className={`w-5 h-5 text-${tx.color}-600`} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{tx.provider}</p>
+                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">{tx.tx}</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-black text-slate-800 font-mono">{tx.amount}</p>
-                    <p className="text-[9px] text-blue-600 font-black tracking-widest uppercase">{tx.status}</p>
+                    <p className="text-sm font-black text-slate-900 font-mono">{tx.amount}</p>
+                    <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest">Validé</p>
                   </div>
                 </div>
               ))}
+            </div>
+             <div className="p-8 mt-auto bg-slate-50 border-t border-slate-100">
+               <button className="w-full text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-colors">Voir l'historique complet</button>
             </div>
           </div>
         </div>

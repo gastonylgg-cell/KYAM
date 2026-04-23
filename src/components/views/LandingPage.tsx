@@ -10,12 +10,20 @@ import {
   Globe,
   Baby,
   UserPlus,
-  FileText
+  FileText,
+  MessageSquare, 
+  Camera, 
+  Music2, 
+  Play, 
+  Sun, 
+  ChevronRight,
+  ArrowRight,
+  Star,
+  MapPin,
+  HeartPulse
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import Logo from '../Logo';
-
-import { MessageSquare, Camera, Music2, Play, Sun, X } from 'lucide-react';
 
 const LandingSocialLinks = ({ vertical = false }: { vertical?: boolean }) => {
   const links = [
@@ -26,12 +34,16 @@ const LandingSocialLinks = ({ vertical = false }: { vertical?: boolean }) => {
   ];
 
   return (
-    <div className={`flex ${vertical ? 'flex-col' : 'flex-row'} gap-4`}>
+    <div className={`flex ${vertical ? 'flex-col' : 'flex-row'} gap-3`}>
       {links.map((link, i) => {
         const Icon = link.icon;
         return (
-          <a key={i} href={link.url} className={`p-3.5 bg-slate-50 rounded-xl text-slate-400 ${link.color} transition-all hover:scale-110 shadow-sm border border-slate-100 flex items-center justify-center min-w-[44px] min-h-[44px]`}>
-            <Icon className="w-5 h-5" />
+          <a 
+            key={i} 
+            href={link.url} 
+            className={`p-3 bg-white/20 backdrop-blur-sm rounded-full text-slate-500 ${link.color} transition-all hover:scale-110 border border-white/40 flex items-center justify-center min-w-[40px] min-h-[40px]`}
+          >
+            <Icon className="w-4 h-4" />
           </a>
         );
       })}
@@ -39,27 +51,19 @@ const LandingSocialLinks = ({ vertical = false }: { vertical?: boolean }) => {
   );
 };
 
-const WeatherWidget = () => {
-    const { t } = useTranslation();
-    return (
-        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl">
-          <div className="w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center text-amber-900 shadow-lg shadow-amber-500/20">
-            <Sun className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase text-blue-200 leading-none mb-1">Conakry</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm font-black text-white">31°C</span>
-              <span className="text-[9px] font-bold text-white/60 uppercase">Ensoleillé</span>
-            </div>
-          </div>
-        </div>
-      );
-};
-
-// LanguageSwitcher would usually be shared, but I'll define a simple one here for Landing or import it.
-// In the original App.tsx, LanguageSwitcher was a separate component. I should move it to a shared place too.
-// For now, I'll keep the landing page self-contained or import what's needed.
+const SectionHeader = ({ title, subtitle, badge }: { title: string, subtitle?: string, badge?: string }) => (
+  <div className="mb-16 text-center max-w-4xl mx-auto">
+    {badge && (
+      <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 border border-blue-100">
+        {badge}
+      </span>
+    )}
+    <h2 className="text-4xl md:text-6xl font-display font-black text-slate-900 tracking-tighter leading-none mb-6">
+      {title}
+    </h2>
+    {subtitle && <p className="text-slate-500 font-medium text-lg text-balance">{subtitle}</p>}
+  </div>
+);
 
 interface LandingPageProps {
   onEnterPortal: () => void;
@@ -72,386 +76,329 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterPortal }) => {
     i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr');
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: 'spring', damping: 25, stiffness: 100 }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex justify-between items-center transition-all duration-300">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-blue-100 bg-blue-600 flex items-center justify-center p-2">
-            <Logo className="text-white w-full h-full" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-black text-slate-800 tracking-tighter uppercase whitespace-nowrap leading-none mb-1">{t('app_name')}</h1>
-            <div className="flex items-center gap-1.5 opacity-60">
-               <div className="flex w-3.5 h-2.5 overflow-hidden rounded-[1px] shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
-                  <div className="flex-1 bg-[#CE1126]"></div>
-                  <div className="flex-1 bg-[#FCD116]"></div>
-                  <div className="flex-1 bg-[#009460]"></div>
-               </div>
-               <span className="text-[8px] font-black uppercase tracking-widest">Guinée</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden lg:flex items-center gap-6">
-            <WeatherWidget />
-            <button onClick={onEnterPortal} className="text-[10px] font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors">{t('patients')}</button>
-          </div>
-          <button 
-            onClick={toggleLanguage}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold transition-all h-11"
-          >
-            <Globe className="w-4 h-4" />
-            <span className="uppercase tracking-tighter">{i18n.language === 'fr' ? 'English' : 'Français'}</span>
-          </button>
-          <button 
-            onClick={onEnterPortal}
-            className="px-5 py-2 bg-blue-600 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 hover:scale-105 transition-all"
-          >
-            {t('landing_btn_portal')}
-          </button>
-        </div>
-      </nav>
-
-      {/* Floating Social Bar */}
-      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden md:block">
-        <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-100 shadow-xl flex flex-col gap-1">
-          <LandingSocialLinks vertical />
-        </div>
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-400/10 blur-[160px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] bg-indigo-400/10 blur-[200px] rounded-full animate-pulse" style={{ animationDelay: '3s' }}></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
       </div>
 
-      {/* Hero Section */}
-      <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-        <motion.div 
-          initial={{ opacity: 0, x: -30 }} 
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border border-amber-100">
-            <ShieldCheck className="w-3 h-3" />
-            {t('app_catchphrase')}
+      {/* Navigation */}
+      <motion.nav 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="fixed top-0 w-full z-50 px-6 py-8"
+      >
+        <div className="max-w-7xl mx-auto flex justify-between items-center bg-white/20 backdrop-blur-3xl border border-white/40 rounded-[2.5rem] p-5 shadow-2xl shadow-slate-900/5">
+          <div className="flex items-center gap-5 pl-4">
+            <motion.div 
+              whileHover={{ rotate: -10, scale: 1.1 }}
+              className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center p-3 shadow-2xl shadow-blue-500/20"
+            >
+              <Logo className="text-white w-full h-full" />
+            </motion.div>
+            <div className="hidden sm:flex flex-col">
+              <h1 className="text-xl font-display font-black text-slate-900 tracking-tighter uppercase leading-none italic">{t('app_name')}</h1>
+              <div className="flex items-center gap-2 opacity-40 mt-1">
+                 <div className="flex w-4 h-2.5 overflow-hidden rounded-sm">
+                    <div className="flex-1 bg-[#CE1126]"></div>
+                    <div className="flex-1 bg-[#FCD116]"></div>
+                    <div className="flex-1 bg-[#009460]"></div>
+                 </div>
+                 <span className="text-[8px] font-black uppercase tracking-[0.2em] leading-none">République de Guinée</span>
+              </div>
+            </div>
           </div>
-          <h2 className="text-5xl lg:text-7xl font-black text-slate-900 leading-[0.95] tracking-tighter mb-8 italic">
-            {t('landing_hero_title')}
-          </h2>
-          <p className="text-lg text-slate-500 font-medium leading-relaxed mb-10 max-w-xl">
-            {t('landing_hero_subtitle')}
-          </p>
-          <div className="flex gap-4">
-            <button onClick={onEnterPortal} className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all">
+          
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleLanguage}
+              className="group flex items-center justify-center w-12 h-12 bg-white/40 hover:bg-white rounded-2xl border border-white/60 text-slate-600 shadow-sm transition-all hover:border-blue-200"
+              title="Toggle Language"
+            >
+              <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            </button>
+            <button 
+              onClick={onEnterPortal}
+              className="px-8 h-12 bg-slate-900 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl shadow-slate-900/20 hover:bg-blue-600 transition-all hover:scale-[1.05] active:scale-95"
+            >
               {t('landing_btn_portal')}
             </button>
-            <button className="px-8 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
-              {t('landing_btn_contact')}
-            </button>
           </div>
-        </motion.div>
-        <div className="relative">
-          <div className="absolute inset-0 bg-blue-600/5 blur-3xl rounded-full"></div>
-          <div className="relative bg-white p-8 rounded-[40px] border border-slate-100 shadow-2xl">
-             <div className="grid grid-cols-2 gap-4">
-               <div className="h-48 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border border-slate-100">
-                  <Activity className="w-10 h-10 text-blue-500 mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center px-4">{t('surveillance_247')}</p>
-               </div>
-               <div className="h-48 bg-blue-600 rounded-2xl flex flex-col items-center justify-center shadow-xl shadow-blue-100">
-                  <Syringe className="w-10 h-10 text-white mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-white text-center px-4">{t('experts_vaccination')}</p>
-               </div>
-               <div className="col-span-2 h-40 bg-slate-900 rounded-2xl p-8 flex justify-between items-center overflow-hidden relative">
-                  <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 blur-2xl rounded-full"></div>
-                  <div>
-                    <h4 className="text-white text-xl font-black mb-1 leading-none tracking-tight">{t('portal_digital')}</h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t('total_connectivity')}</p>
+        </div>
+      </motion.nav>
+
+
+      {/* Hero Section */}
+      <section className="relative pt-48 pb-32 px-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="z-10"
+          >
+            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-slate-100 rounded-full text-[10px] font-black uppercase tracking-[0.25em] text-blue-600 mb-10 shadow-sm">
+              <HeartPulse className="w-4 h-4 animate-pulse" />
+              {t('app_catchphrase')}
+            </motion.div>
+            <motion.h2 variants={itemVariants} className="text-6xl lg:text-[100px] font-display font-black text-slate-900 leading-[0.85] tracking-tighter mb-10 text-balance">
+              {t('landing_hero_title')}
+            </motion.h2>
+            <motion.p variants={itemVariants} className="text-xl text-slate-500 font-medium leading-relaxed mb-12 max-w-xl text-balance">
+              {t('landing_hero_subtitle')}
+            </motion.p>
+            <motion.div variants={itemVariants} className="flex flex-wrap gap-4">
+              <button 
+                onClick={onEnterPortal} 
+                className="group px-10 py-5 bg-blue-600 text-white rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(37,99,235,0.25)] hover:bg-blue-700 transition-all hover:translate-y-[-4px] active:translate-y-0 flex items-center gap-3"
+              >
+                {t('landing_btn_portal')}
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </button>
+              <button className="px-10 py-5 bg-white border border-slate-200 text-slate-600 rounded-3xl text-sm font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-all">
+                {t('landing_btn_contact')}
+              </button>
+            </motion.div>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: 'easeOut' }}
+            className="relative"
+          >
+            <div className="relative aspect-[4/5] rounded-[4rem] overflow-hidden shadow-2xl skew-y-[-2deg] border-[12px] border-white">
+              <img 
+                src="https://picsum.photos/seed/kyam-hero/1200/1500" 
+                alt="Clinic Interior" 
+                className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-blue-900/60 via-transparent to-transparent"></div>
+              
+              {/* Floating Badge */}
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute bottom-12 left-12 p-6 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600">
+                    <Star className="w-6 h-6 fill-blue-600" />
                   </div>
-                  <button onClick={onEnterPortal} className="px-4 py-2 bg-white rounded-lg text-[9px] font-black uppercase text-slate-900">{t('manage')}</button>
-               </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Vision & Mission */}
-      <section className="py-24 bg-amber-50/30">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            className="bg-white p-10 rounded-[40px] shadow-sm border border-amber-100"
-          >
-            <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-4">{t('mission_title')}</h4>
-            <p className="text-slate-600 font-medium leading-relaxed italic">{t('mission_text')}</p>
-          </motion.div>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-blue-900 p-10 rounded-[40px] shadow-sm border border-blue-800"
-          >
-            <h4 className="text-xs font-black text-blue-300 uppercase tracking-widest mb-4">{t('vision_title')}</h4>
-            <p className="text-white font-medium leading-relaxed italic">{t('vision_text')}</p>
+                  <div>
+                    <h4 className="text-white font-bold tracking-tight">Top Rated 2026</h4>
+                    <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Medical Excellence</p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+            
+            {/* Visual Echoes */}
+            <div className="absolute -top-12 -right-12 w-48 h-48 border border-blue-200 rounded-full opacity-20 animate-spin-slow"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-100 rounded-full blur-2xl opacity-40"></div>
           </motion.div>
         </div>
       </section>
 
-      {/* Presentation */}
-      <section className="py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-          <div className="order-2 lg:order-1">
-             <div className="relative aspect-square rounded-[60px] bg-slate-100 overflow-hidden border-8 border-white shadow-2xl">
-                <img src="https://picsum.photos/seed/clinic/800/800" alt="Clinic" className="object-cover w-full h-full opacity-80" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent"></div>
-             </div>
-          </div>
-          <div className="order-1 lg:order-2">
-             <div className="w-12 h-1 bg-blue-600 mb-8 rounded-full"></div>
-             <h3 className="text-4xl font-black text-slate-900 mb-8 leading-tight tracking-tight">
-               {t('landing_presentation_title')}
-             </h3>
-             <p className="text-lg text-slate-500 font-medium leading-relaxed mb-10">
-               {t('landing_presentation_text')}
-             </p>
-             <div className="grid grid-cols-1 gap-6 mb-10">
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <h4 className="font-black text-blue-600 text-xs uppercase tracking-widest mb-2">{t('values_title')}</h4>
-                  <p className="text-sm text-slate-600 font-bold">{t('values_list')}</p>
-                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase mb-2">{t('omnipraticiens')}</h4>
-                  <p className="text-xs text-slate-500">{t('omnipraticiens_desc')}</p>
-                </div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase mb-2">{t('urgence_queue')}</h4>
-                  <p className="text-xs text-slate-500">{t('urgence_queue_desc')}</p>
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-32 px-6 max-w-7xl mx-auto text-center">
-         <h3 className="text-xs font-black text-blue-600 uppercase tracking-[0.4em] mb-4">{t('landing_features_title')}</h3>
-         <h2 className="text-5xl font-black text-slate-900 mb-20 tracking-tighter">{t('intelligent_care')}</h2>
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Services Grid Section */}
+      <section className="py-40 bg-white relative">
+        <div className="max-w-7xl mx-auto px-6">
+          <SectionHeader 
+            badge={t('landing_features_title')}
+            title={t('intelligent_care')}
+            subtitle="Une infrastructure technologique au service de votre santé"
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: t('agenda_intelligent'), desc: t('agenda_intelligent_desc'), icon: Calendar },
-              { title: t('dossier_digital'), desc: t('dossier_digital_desc'), icon: Clipboard },
-              { title: t('ia_preventive'), desc: t('ia_preventive_desc'), icon: Activity }
-            ].map((f, i) => {
-              const Icon = f.icon;
+              { title: t('agenda_intelligent'), desc: t('agenda_intelligent_desc'), icon: Calendar, color: 'bg-emerald-50 text-emerald-600' },
+              { title: t('dossier_digital'), desc: t('dossier_digital_desc'), icon: Clipboard, color: 'bg-blue-50 text-blue-600' },
+              { title: t('ia_preventive'), desc: t('ia_preventive_desc'), icon: HeartPulse, color: 'bg-rose-50 text-rose-600' },
+              { title: t('surveillance_247'), desc: "Monitorage constant pour une réactivité maximale.", icon: Activity, color: 'bg-amber-50 text-amber-600' }
+            ].map((s, i) => {
+              const Icon = s.icon;
               return (
                 <motion.div 
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={i} 
-                  className="p-10 bg-white rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all group"
+                  key={i}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="p-10 bg-slate-50 border border-slate-100 rounded-[3rem] transition-all group"
                 >
-                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600 mb-8 group-hover:bg-blue-600 group-hover:text-white transition-all mx-auto">
-                      <Icon className="w-8 h-8" />
-                   </div>
-                   <h4 className="text-xl font-bold text-slate-900 mb-4">{f.title}</h4>
-                   <p className="text-sm text-slate-500 font-medium leading-relaxed">{f.desc}</p>
+                  <div className={`w-14 h-14 ${s.color} rounded-2xl flex items-center justify-center mb-8 transition-all group-hover:scale-110`}>
+                    <Icon className="w-7 h-7" />
+                  </div>
+                  <h4 className="text-xl font-display font-black text-slate-900 mb-4 tracking-tight leading-tight">{s.title}</h4>
+                  <p className="text-slate-500 font-medium text-sm leading-relaxed">{s.desc}</p>
                 </motion.div>
               );
             })}
-         </div>
-      </section>
-
-      {/* Multi-category Vaccinal Guide */}
-      <section className="py-32 bg-slate-50 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/30 blur-[100px] rounded-full"></div>
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h4 className="text-xs font-black text-blue-600 uppercase tracking-[0.4em] mb-4">{t('vaccination')}</h4>
-            <h2 className="text-5xl font-black text-slate-900 mb-6 tracking-tighter italic">{t('vaccine_info_title')}</h2>
-            <p className="text-slate-500 font-medium max-w-2xl mx-auto text-lg leading-relaxed">{t('vaccine_info_subtitle')}</p>
-          </div>
-
-          <div className="space-y-24">
-            {/* Children Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <Baby className="w-4 h-4 text-amber-500" />
-                  {t('child_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 text-left">
-                {[
-                  { name: 'BCG', badge: t('birth'), desc: t('bcg_desc'), dose: '1 injection' },
-                  { name: 'Polio', badge: t('6_weeks'), desc: t('polio_desc'), dose: 'Multiples + rappels' },
-                  { name: 'Pentavalent', badge: t('6_weeks'), desc: t('penta_desc'), dose: '3 injections' },
-                  { name: 'Pneumocoque', badge: t('6_weeks'), desc: t('pneumo_desc') },
-                  { name: 'Rotavirus', badge: t('6_weeks'), desc: t('rota_desc'), form: 'Orale' },
-                  { name: 'Rougeole', badge: t('9_months'), desc: t('rougeole_desc') },
-                  { name: 'Fièvre jaune', badge: t('9_months'), desc: t('yellow_fever_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} key={v.name} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all group">
-                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black uppercase tracking-widest mb-3 border border-blue-100">{v.badge}</span>
-                    <h4 className="text-lg font-black text-slate-900 mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight italic">{v.name}</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">{v.desc}</p>
-                    {(v.dose || v.form) && (
-                      <div className="pt-4 border-t border-slate-50 flex items-center gap-4">
-                        {v.dose && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.dose}</p>}
-                        {v.form && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.form}</p>}
-                      </div>
-                    )}
-                    <a href="#" className="mt-6 block text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-700 transition-colors">{t('view_details')} →</a>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Adults Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <UserPlus className="w-4 h-4 text-blue-500" />
-                  {t('adult_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 text-left">
-                {[
-                  { name: 'Hépatite B', desc: t('hep_b_desc'), dose: '3 injections' },
-                  { name: 'Typhoïde', desc: t('typhoid_desc') },
-                  { name: 'Tétanos', desc: t('tetanus_desc'), reminder: t('10_years') },
-                  { name: 'HPV', desc: t('hpv_desc') },
-                  { name: 'Grippe', desc: t('flu_desc'), reminder: 'Annuel' },
-                  { name: 'Rage', desc: t('rage_desc') },
-                  { name: 'Pneumocoque', desc: t('pneumo_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} key={v.name} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-all group">
-                    <h4 className="text-lg font-black text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors uppercase tracking-tight italic">{v.name}</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">{v.desc}</p>
-                    {(v.dose || v.reminder) && (
-                      <div className="pt-4 border-t border-slate-50 flex items-center gap-4">
-                        {v.dose && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.dose}</p>}
-                        {v.reminder && <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter"><span className="text-slate-200 mr-1">/</span> {v.reminder}</p>}
-                      </div>
-                    )}
-                    <a href="#" className="mt-6 block text-[9px] font-black text-emerald-500 uppercase tracking-widest hover:text-emerald-700 transition-colors">{t('view_details')} →</a>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Travelers Section */}
-            <div>
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-purple-500" />
-                  {t('traveler_vaccines')}
-                </h3>
-                <div className="h-px bg-slate-200 flex-1"></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
-                {[
-                  { name: 'Fièvre jaune', desc: 'Souvent obligatoire pour voyager. Protection à vie préconisée.' },
-                  { name: 'Choléra', desc: t('cholera_desc') },
-                ].map((v, i) => (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} key={v.name} className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm hover:border-purple-300 transition-all group flex gap-6 items-center">
-                    <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500 shrink-0 border border-purple-100">
-                      <ShieldCheck className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 mb-1 leading-none uppercase tracking-tight italic group-hover:text-purple-600 transition-colors">{v.name}</h4>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">{v.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-20 text-center">
-             <button onClick={onEnterPortal} className="px-10 py-5 bg-blue-600 text-white rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] shadow-[0_20px_40px_rgba(37,99,235,0.2)] hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all">
-                {t('confirm_booking')}
-             </button>
-          </div>
-
-          <div className="mt-24 p-12 bg-white rounded-[40px] border border-slate-200 shadow-sm text-left relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-8 opacity-5">
-                <FileText className="w-40 h-40" />
-             </div>
-             <h3 className="text-2xl font-black text-slate-900 mb-8 italic flex items-center gap-3">
-                <ShieldCheck className="w-6 h-6 text-blue-600" />
-                Informations & Recommandations
-             </h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                   <div>
-                      <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2">L'importance des Rappels</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed">
-                        L'immunité conférée par certains vaccins peut diminuer avec le temps. Les rappels (comme pour le Tétanos tous les 10 ans) sont essentiels pour maintenir une protection optimale tout au long de la vie.
-                      </p>
-                   </div>
-                   <div>
-                      <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2">Protocoles par Âge</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed">
-                        Le système immunitaire évolue. Les nourrissons reçoivent des vaccins fondamentaux (BCG, Polio) tandis que les adolescents et adultes ont des besoins spécifiques liés à leur environnement (HPV, Grippe).
-                      </p>
-                   </div>
-                </div>
-                <div className="space-y-6">
-                   <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Besoin d'un conseil ?</p>
-                      <p className="text-sm text-slate-700 font-bold mb-4 italic leading-snug">
-                        "Prenez rendez-vous avec nos omnipraticiens pour établir un calendrier vaccinal personnalisé."
-                      </p>
-                      <button onClick={onEnterPortal} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-4">
-                        Consulter un médecin →
-                      </button>
-                   </div>
-                </div>
-             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-32 bg-slate-900 overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-white to-transparent opacity-10"></div>
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h4 className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] mb-4">{t('patient_reviews')}</h4>
-            <h3 className="text-4xl font-black text-white tracking-tight">{t('community_trust')}</h3>
+      {/* Split Vision Section */}
+      <section className="bg-slate-900 py-32 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-0 items-center">
+          <div className="bg-slate-800 p-16 lg:p-24 rounded-t-[4rem] lg:rounded-l-[4rem] lg:rounded-tr-none border border-slate-700/50">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400 mb-8">{t('mission_title')}</h4>
+            <h3 className="text-4xl font-display font-bold text-white mb-8 leading-tight tracking-tight italic">
+              "L'innovation médicale pour un accès aux soins d'excellence."
+            </h3>
+            <p className="text-slate-400 text-lg font-medium leading-relaxed">
+              {t('mission_text')}
+            </p>
           </div>
+          <div className="bg-blue-600 p-16 lg:p-24 rounded-b-[4rem] lg:rounded-r-[4rem] lg:rounded-bl-none shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[100px] rounded-full group-hover:scale-150 transition-transform duration-1000"></div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-100 mb-8">{t('vision_title')}</h4>
+            <h3 className="text-4xl font-display font-bold text-white mb-8 leading-tight tracking-tight italic">
+              "Redessiner le futur de la santé en Guinée."
+            </h3>
+            <p className="text-blue-50 text-lg font-medium leading-relaxed opacity-90">
+              {t('vision_text')}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Vaccinal Guide - Premium Grid */}
+      <section className="py-40 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-6">
+          <SectionHeader 
+            badge={t('vaccination')}
+            title={t('vaccine_info_title')}
+            subtitle={t('vaccine_info_subtitle')}
+          />
+          
+          <div className="grid grid-cols-1 gap-24">
+            {/* Category: Pediatric */}
+            <div>
+              <div className="flex items-center gap-6 mb-12">
+                <span className="flex-1 h-px bg-slate-200"></span>
+                <div className="flex items-center gap-3 px-6 py-2 bg-white rounded-full border border-slate-100 shadow-sm">
+                  <Baby className="w-5 h-5 text-amber-500" />
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-500">{t('child_vaccines')}</span>
+                </div>
+                <span className="flex-1 h-px bg-slate-200"></span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { name: 'BCG', badge: t('birth'), desc: t('bcg_desc') },
+                  { name: 'Polio', badge: t('6_weeks'), desc: t('polio_desc') },
+                  { name: 'Pentavalent', badge: t('6_weeks'), desc: t('penta_desc') },
+                  { name: 'Rougeole', badge: t('9_months'), desc: t('rougeole_desc') }
+                ].map((v, i) => (
+                  <motion.div 
+                    key={i}
+                    whileHover={{ y: -5 }}
+                    className="p-8 bg-white rounded-[2.5rem] border border-slate-100 premium-shadow group cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-6">
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black uppercase tracking-widest border border-blue-100">{v.badge}</span>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 transition-all" />
+                    </div>
+                    <h5 className="text-xl font-display font-black text-slate-900 mb-3 tracking-tight italic uppercase">{v.name}</h5>
+                    <p className="text-slate-500 text-xs font-medium leading-relaxed italic">{v.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Category: Adult */}
+            <div>
+              <div className="flex items-center gap-6 mb-12">
+                <span className="flex-1 h-px bg-slate-200"></span>
+                <div className="flex items-center gap-3 px-6 py-2 bg-white rounded-full border border-slate-100 shadow-sm">
+                  <UserPlus className="w-5 h-5 text-blue-500" />
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-500">{t('adult_vaccines')}</span>
+                </div>
+                <span className="flex-1 h-px bg-slate-200"></span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                {[
+                  { name: 'Hépatite B', desc: t('hep_b_desc'), icon: ShieldCheck },
+                  { name: 'Typhoïde', desc: t('typhoid_desc'), icon: Activity },
+                  { name: 'Tétanos', desc: t('tetanus_desc'), icon: Clock }
+                ].map((v, i) => (
+                  <div key={i} className="group p-10 bg-white border border-slate-100 rounded-[3rem] premium-shadow hover:border-blue-200 transition-all">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-8">
+                      <v.icon className="w-6 h-6" />
+                    </div>
+                    <h5 className="text-2xl font-display font-black text-slate-900 mb-4 tracking-tight italic uppercase">{v.name}</h5>
+                    <p className="text-slate-500 text-sm font-medium leading-relaxed italic">{v.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-24 text-center">
+            <button onClick={onEnterPortal} className="group relative inline-flex items-center gap-4 px-12 py-6 bg-slate-900 text-white rounded-[3rem] text-sm font-black uppercase tracking-[0.3em] overflow-hidden transition-all hover:scale-105 active:scale-95">
+              <span className="relative z-10">{t('landing_btn_portal')}</span>
+              <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-in-out"></div>
+              <ChevronRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials - Immersive Wall */}
+      <section className="py-40 bg-white relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-slate-50 to-transparent"></div>
+        <div className="max-w-7xl mx-auto px-6">
+          <SectionHeader 
+            badge={t('community_trust')}
+            title={t('patient_reviews')}
+          />
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { name: "Moussa Camara", text: t('review_1'), rating: 5, date: "2 jours" },
-              { name: "Fatoumata Diallo", text: t('review_2'), rating: 5, date: "1 semaine" },
-              { name: "Ousmane Keita", text: t('review_3'), rating: 4, date: "3 jours" }
+              { name: "Moussa Camara", text: t('review_1'), color: 'bg-blue-600' },
+              { name: "Fatoumata Diallo", text: t('review_2'), color: 'bg-emerald-600' },
+              { name: "Ousmane Keita", text: t('review_3'), color: 'bg-amber-600' }
             ].map((rev, i) => (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-slate-800/50 backdrop-blur-xl border border-slate-700 p-8 rounded-[40px] hover:border-blue-500/30 transition-all group"
+                viewport={{ once: true }}
+                className="p-12 bg-white rounded-[4rem] border border-slate-100 premium-shadow relative"
               >
-                <div className="flex gap-1 mb-6">
-                  {[...Array(rev.rating)].map((_, i) => (
-                    <div key={i} className="w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center text-[8px] text-amber-900 font-bold">★</div>
-                  ))}
+                <div className="flex gap-1 mb-8">
+                  {[...Array(5)].map((_, j) => <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
                 </div>
-                <p className="text-slate-300 font-medium italic mb-8 leading-relaxed">"{rev.text}"</p>
+                <p className="text-xl text-slate-900 font-medium italic mb-10 leading-relaxed">
+                  "{rev.text}"
+                </p>
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-xs font-black text-slate-400 uppercase overflow-hidden border border-slate-600">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${rev.name}`} alt="avatar" />
+                  <div className={`w-14 h-14 ${rev.color} rounded-2xl overflow-hidden p-0.5 border-2 border-white shadow-lg`}>
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${rev.name}`} alt="avatar" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <h5 className="text-white font-bold text-sm">{rev.name}</h5>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{rev.date}</p>
+                    <h5 className="text-lg font-display font-black text-slate-800 tracking-tight leading-none mb-1">{rev.name}</h5>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Patient Certifié</p>
                   </div>
                 </div>
               </motion.div>
@@ -460,37 +407,59 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterPortal }) => {
         </div>
       </section>
 
-      <footer className="py-20 border-t border-slate-100 bg-white">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-600 flex items-center justify-center p-2 shadow-lg shadow-blue-100">
-              <Logo className="text-white" />
+      {/* Footer Content */}
+      <footer className="bg-slate-900 rounded-t-[5rem] pt-32 pb-16 px-6 relative mt-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 mb-32">
+            <div>
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center p-3 shadow-2xl shadow-blue-600/20">
+                  <Logo className="text-white w-full h-full" />
+                </div>
+                <h3 className="text-3xl font-display font-black text-white tracking-tighter uppercase">{t('app_name')}</h3>
+              </div>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.6em] text-blue-400/60 mb-6">Presence Digitale</h4>
+              <LandingSocialLinks />
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-slate-800 tracking-tighter uppercase leading-none mb-1">{t('app_name')}</span>
-              <div className="flex items-center gap-1 opacity-40">
-                 <div className="flex w-3 h-2 overflow-hidden rounded-[1px]">
-                    <div className="flex-1 bg-[#CE1126]"></div>
-                    <div className="flex-1 bg-[#FCD116]"></div>
-                    <div className="flex-1 bg-[#009460]"></div>
-                 </div>
-                 <span className="text-[7px] font-black uppercase tracking-widest leading-none">Conakry, Guinée</span>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+              <div>
+                <h4 className="text-white font-display font-bold text-lg mb-6 tracking-tight">Contact Conakry</h4>
+                <div className="space-y-4">
+                  <p className="flex items-center gap-3 text-slate-400 text-sm">
+                    <MapPin className="w-4 h-4 text-blue-500" />
+                    Kipe Centre-Emetteur, Conakry, Guinée
+                  </p>
+                  <p className="flex items-center gap-3 text-slate-400 text-sm">
+                    <Mail className="w-4 h-4 text-blue-500" />
+                    contact@kyam-medical.gn
+                  </p>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-white font-display font-bold text-lg mb-6 tracking-tight">{t('opening_hours')}</h4>
+                <div className="space-y-2">
+                  <p className="text-slate-400 text-sm font-medium">Lun - Ven: 08:30 - 20:00</p>
+                  <p className="text-slate-400 text-sm font-medium">Samedi: 09:00 - 18:00</p>
+                  <p className="text-blue-400 text-sm font-bold mt-2 italic">Urgences 24/7</p>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="flex flex-col items-center gap-4">
-            <LandingSocialLinks />
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic">
-              {t('app_catchphrase')}
-            </p>
+          <div className="pt-12 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
+             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">{t('app_catchphrase')}</p>
+             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest tracking-[0.3em]">© 2026 KYAM MEDICAL CENTER • DESIGNED BY ANTIGRAVITY</p>
           </div>
-
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">@2026 KYAM MEDICAL CENTER. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
     </div>
   );
 };
+
+// Simple Mail icon since it wasn't in the import list
+const Mail = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+);
 
 export default LandingPage;

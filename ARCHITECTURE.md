@@ -14,30 +14,23 @@
   |- Queue Manager (Real-time events)
           |
 [ Data Persistence ]
-  |- PostgreSQL (Primary relational store)
-  |- Redis (Queue state & Caching - Mocked)
-  |- LocalStorage / IndexedDB (Offline Support)
+  |- db.json (Primary JSON flat-file store for simple portability)
+  |- LocalStorage (Offline UI state resilience)
 ```
 
 ## 2. Tech Stack
-- **Frontend**: React 19, Tailwind CSS (Design System), Framer Motion (Animations), Lucide React (Icons).
-- **Backend**: Node.js, Express (API), JWT (Security), Bcrypt (Hashing).
+- **Frontend**: React 19, Tailwind CSS 4, Framer Motion (Animations), Lucide React (Icons), i18next (Translation).
+- **Backend**: Node.js, Express (API), JWT (Security), Bcrypt (Hashing), Socket.IO (Real-time).
 - **AI Engine**: Google Gemini 1.5 Flash (Patient Risk Scoring & EMR Insights).
-- **Finance**: Mobile Money API Abstraction (MTN/Orange).
-- **Notifications**: WhatsApp Business API (Mock) + SMS Fallback.
 
 ## 3. Folder Structure
 ```text
 /src
-  /components        # UI Components (atoms, molecules)
-  /services          # API clients & Business Logic
-  /hooks             # Custom React Hooks
-  /pages             # Main views (Dashboard, Booking, etc.)
-  /types             # Shared TypeScript interfaces
-  /utils             # Formatting, Math, Date helpers
-/server
-  /routes            # Express API endpoints
-  /middleware        # Auth & Validation
-  /services          # PDF generation, Mobile Money adapters
-  /db                # Schema & Mock database
+  /components        # UI Components & Views (Dashboard, Queue, etc.)
+  /services          # AI Service integration
+  /utils             # Mock data & offline sync logic
+  /types.ts          # Shared TypeScript interfaces
+  /i18n.ts           # Translation configuration
+/server.ts           # Unified Express API + Vite Middleware
+db.json              # Persistent state storage
 ```

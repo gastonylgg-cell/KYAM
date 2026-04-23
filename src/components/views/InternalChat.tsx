@@ -24,8 +24,9 @@ const InternalChat = () => {
     fetch('/api/messages', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(data => setMessages(Array.isArray(data) ? data : []));
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setMessages(Array.isArray(data) ? data : []))
+    .catch(() => setMessages([]));
   };
 
   useEffect(() => {

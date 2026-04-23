@@ -19,6 +19,12 @@ import {
   Plus,
   Search,
   Settings,
+  Trash2,
+  User as UserIcon,
+  HeartPulse,
+  Mail,
+  Stethoscope,
+  Download,
   UserPlus,
   Globe,
   Baby,
@@ -277,7 +283,9 @@ const ActivityModeSwitcher = () => {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
       })
       .then(res => res.ok ? res.json() : null)
-      .then(data => setDoctorProfile(data?.error ? null : data))
+      .then(data => {
+        if (data && !data.error) setDoctorProfile(data);
+      })
       .catch(() => setDoctorProfile(null));
     }
   }, [user]);
@@ -365,7 +373,11 @@ const AppointmentView = () => {
         fetch('/api/agenda/settings', { headers }),
         fetch('/api/agenda/blocked', { headers })
       ]);
-      const [apps, sett, block] = await Promise.all([resApps.json(), resSettings.json(), resBlocked.json()]);
+      
+      const apps = resApps.ok ? await resApps.json() : [];
+      const sett = resSettings.ok ? await resSettings.json() : { openTime: '08:00', closeTime: '18:00', slotDurationMinutes: 30 };
+      const block = resBlocked.ok ? await resBlocked.json() : [];
+      
       setAppointments(Array.isArray(apps) ? apps : []);
       setSettings(sett);
       setEditingSettings(sett);
@@ -667,7 +679,7 @@ const VaccinationView = () => {
     fetch(`/api/vaccinations/schedule/${user.id}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
+    .then(res => res.ok ? res.json() : [])
     .then(data => setSchedule(Array.isArray(data) ? data : []))
     .catch(() => setSchedule([]));
   }, [user]);
@@ -678,56 +690,66 @@ const VaccinationView = () => {
   const score = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   return (
-    <div className="p-6">
-      <header className="mb-10 flex justify-between items-end">
+    <div className="p-8 md:p-12 max-w-7xl mx-auto pb-32">
+      <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">{t('vaccinations')}</h2>
-          <p className="text-xs text-slate-500 font-medium">{t('age_based_engine')}</p>
+          <h2 className="text-3xl font-display font-black text-slate-900 uppercase tracking-tighter italic">{t('vaccinations')}</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Plateforme de Gouvernance Immunitaire</p>
         </div>
-        <div className="flex gap-2">
-           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center gap-2">
-              <Clipboard className="w-3.5 h-3.5" />
-              {t('digital_card')}
+        <div className="flex gap-4">
+           <button className="px-8 py-4 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 hover:translate-y-[-2px] transition-all flex items-center gap-3">
+              <Clipboard className="w-5 h-5" />
+              <span>{t('digital_card')}</span>
            </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 space-y-10">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-12">
+        <div className="xl:col-span-2 space-y-12">
           {categories.map(cat => {
             const filtered = schedule.filter(v => v.category === cat);
             if (filtered.length === 0) return null;
             return (
-              <div key={cat}>
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
-                  <div className="h-px bg-slate-100 flex-1"></div>
-                  {t(cat.toLowerCase() + '_vaccines')}
+              <div key={cat} className="space-y-6">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-6">
+                  <span className="shrink-0">{t(cat.toLowerCase() + '_vaccines')}</span>
                   <div className="h-px bg-slate-100 flex-1"></div>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filtered.map(v => (
-                    <div key={v.name} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm hover:border-blue-200 transition-all group">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-                          v.status === 'MISSED' ? 'bg-red-50 text-red-500 border-red-100' : 
-                          v.status === 'ADMINISTERED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                          'bg-blue-50 text-blue-600 border-blue-100'
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filtered.map((v, i) => (
+                    <motion.div 
+                      key={v.name}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="bg-white p-6 rounded-[2.5rem] border border-slate-200 flex items-center justify-between shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all group relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-[30px] rounded-full -mr-8 -mt-8 group-hover:bg-blue-500/10 transition-all"></div>
+                      
+                      <div className="flex items-center gap-5 relative z-10">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                          v.status === 'MISSED' ? 'bg-rose-50 text-rose-500 ring-4 ring-rose-50/50' : 
+                          v.status === 'ADMINISTERED' ? 'bg-emerald-50 text-emerald-600 ring-4 ring-emerald-50/50' :
+                          'bg-blue-50 text-blue-600 ring-4 ring-blue-50/50'
                         }`}>
-                          {v.status === 'ADMINISTERED' ? <ShieldCheck className="w-5 h-5" /> : <Syringe className="w-5 h-5" />}
+                          {v.status === 'ADMINISTERED' ? <ShieldCheck className="w-6 h-6" /> : <Syringe className="w-6 h-6" />}
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-slate-800">{v.name}</h4>
-                          <p className="text-[9px] text-slate-400 font-mono uppercase tracking-tighter">
-                            {v.status === 'ADMINISTERED' ? `${t('vaccine_done')}: ${new Date(v.administeredAt).toLocaleDateString()}` : `${t('vaccine_due')}: ${new Date(v.dueDate).toLocaleDateString()}`}
+                          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{v.name}</h4>
+                          <p className="text-[10px] text-slate-400 font-mono font-black mt-0.5">
+                            {v.status === 'ADMINISTERED' ? `${t('vaccine_done')}: ${format(new Date(v.administeredAt), 'dd.MM.yy')}` : `${t('vaccine_due')}: ${format(new Date(v.dueDate), 'dd.MM.yy')}`}
                           </p>
                         </div>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                        v.status === 'MISSED' ? 'bg-red-100 text-red-700 border-red-200' : 
-                        v.status === 'ADMINISTERED' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        'bg-blue-100 text-blue-700 border-blue-200'
-                      }`}>{v.status}</span>
-                    </div>
+
+                      <div className="relative z-10">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${
+                          v.status === 'MISSED' ? 'bg-rose-50 text-rose-700 border-rose-100 group-hover:bg-rose-500 group-hover:text-white' : 
+                          v.status === 'ADMINISTERED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 group-hover:bg-emerald-500 group-hover:text-white' :
+                          'bg-blue-50 text-blue-700 border-blue-100 group-hover:bg-blue-500 group-hover:text-white'
+                        }`}>{v.status}</span>
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -735,61 +757,53 @@ const VaccinationView = () => {
           })}
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-slate-900 text-white p-6 rounded-[32px] border border-slate-800 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[80px] rounded-full"></div>
-            <div className="flex items-center gap-4 mb-8 relative z-10">
-              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white border-2 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400">{t('immunity_score')}</h3>
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">{t('ai_bio_analysis')}</p>
-              </div>
-            </div>
-            <div className="mb-8 relative z-10">
-              <div className="flex justify-between items-end mb-3">
-                <span className="text-5xl font-black text-white font-mono tracking-tighter">{score}<span className="text-sm text-slate-600 ml-1">/100</span></span>
-                <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{score > 80 ? t('optimal') : 'À RENFORCER'}</span>
-              </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${score}%` }}
-                  className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_15px_#2563eb]"
-                />
-              </div>
-            </div>
-            <div className="p-5 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
-              <p className="text-slate-400 font-medium text-[11px] leading-relaxed italic">
-                "{t('digital_card_synced')}"
-              </p>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
-             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t('local_specifics')}</h4>
-             <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                   <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shrink-0">
-                      <CreditCard className="w-4 h-4" />
-                   </div>
-                   <div>
-                      <p className="text-xs font-bold text-slate-800">{t('orange_momo')} / MTN</p>
-                      <p className="text-[10px] text-slate-500 leading-tight">{t('momo_payments')}</p>
-                   </div>
+        <div className="space-y-8">
+           <div className="bg-slate-900 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden group border border-slate-800">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[80px] rounded-full -mr-10 -mt-10 group-hover:bg-blue-600/20 transition-all duration-700"></div>
+              <div className="relative z-10">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Score d'Immunité</p>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="relative">
+                    <div className="text-6xl font-display font-black text-white italic tracking-tighter">{score}%</div>
+                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">Protéger</div>
+                  </div>
+                  <div className="w-20 h-20 rounded-full border-4 border-slate-800 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full border-4 border-blue-500 flex items-center justify-center animate-pulse shadow-xl shadow-blue-500/20">
+                       <ShieldCheck className="w-6 h-6 text-blue-500" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-start gap-4">
-                   <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center shrink-0">
-                      <Signal className="w-4 h-4" />
-                   </div>
-                   <div>
-                      <p className="text-xs font-bold text-slate-800">{t('low_bandwidth')}</p>
-                      <p className="text-[10px] text-slate-500 leading-tight">{t('network_optimized')}</p>
-                   </div>
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                   <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${score}%` }}
+                    transition={{ duration: 1.5, ease: "circOut" }}
+                    className="h-full bg-blue-500" 
+                   />
                 </div>
+                <p className="text-[10px] text-slate-500 font-bold mt-6 uppercase tracking-wider leading-relaxed">
+                   Votre profil est protégé à {score}%. Nous recommandons de suivre le protocole KYAM pour une sécurité totale.
+                </p>
+              </div>
+           </div>
+
+           <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm">
+             <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">Protocoles Prochains</h4>
+             <div className="space-y-6">
+                {[
+                  { name: 'Rappel Tétanos', date: 'Dans 12 jours', type: 'DUE' },
+                  { name: 'Grippe Saisonnière', date: 'Novembre 2024', type: 'SCHEDULE' }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-5">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                    <div>
+                      <p className="text-[11px] font-black text-slate-800 uppercase mb-1">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.date}</p>
+                    </div>
+                  </div>
+                ))}
              </div>
-          </div>
+           </div>
         </div>
       </div>
     </div>
@@ -823,7 +837,7 @@ const RecordsView = () => {
     fetch(endpoint, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
+    .then(res => res.ok ? res.json() : [])
     .then(data => setRecords(Array.isArray(data) ? data : []))
     .catch(() => setRecords([]));
   };
@@ -832,8 +846,9 @@ const RecordsView = () => {
     fetch('/api/medications', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(data => setMedsList(Array.isArray(data) ? data : []));
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setMedsList(Array.isArray(data) ? data : []))
+    .catch(() => setMedsList([]));
   };
 
   useEffect(() => {
@@ -967,8 +982,9 @@ const RecordsView = () => {
     fetch(`/api/records/patient/${email}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
     })
-    .then(res => res.json())
-    .then(acts => setSelectedPatientHistory({ email, acts }));
+    .then(res => res.ok ? res.json() : [])
+    .then(acts => setSelectedPatientHistory({ email, acts }))
+    .catch(() => setSelectedPatientHistory(null));
   };
 
   const filteredRecords = records.filter(r => {
@@ -983,44 +999,49 @@ const RecordsView = () => {
   });
 
   return (
-    <div className="p-6">
+    <div className="p-8 md:p-12 max-w-6xl mx-auto pb-32">
       {/* Patient History Modal */}
       <AnimatePresence>
         {selectedPatientHistory && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-2xl max-h-[80vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden border border-white"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-2xl max-h-[85vh] rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden border border-white"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div>
-                  <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tighter">Historique Patient</h3>
-                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{selectedPatientHistory.email}</p>
+                  <h3 className="text-2xl font-display font-black text-slate-900 uppercase italic tracking-tighter">Historique Patient</h3>
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1">{selectedPatientHistory.email}</p>
                 </div>
-                <button onClick={() => setSelectedPatientHistory(null)} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100 transition-all border border-slate-200">
-                  <X className="w-5 h-5" />
+                <button onClick={() => setSelectedPatientHistory(null)} className="p-4 bg-white rounded-2xl shadow-sm hover:bg-slate-100 transition-all border border-slate-200">
+                  <X className="w-6 h-6 text-slate-400" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
                 {selectedPatientHistory.acts.length === 0 ? (
-                  <p className="text-center text-slate-400 py-10 font-bold uppercase text-[10px] tracking-widest">Aucun historique disponible</p>
+                  <div className="text-center py-20">
+                     <Search className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                     <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.3em]">Aucune archive disponible</p>
+                  </div>
                 ) : (
                   selectedPatientHistory.acts.map((act: any) => (
-                    <div key={act.id} className="relative pl-8 before:absolute before:left-0 before:top-2 before:bottom-0 before:w-px before:bg-slate-200 last:before:hidden">
-                      <div className="absolute left-[-4px] top-2 w-2 h-2 rounded-full bg-blue-600 shadow-lg shadow-blue-200"></div>
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 border-l-4 border-l-blue-600">
-                        <div className="flex justify-between items-start mb-2">
-                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">{act.diagnosis}</h4>
-                           <span className="text-[9px] font-mono text-slate-400">{new Date(act.createdAt).toLocaleDateString()}</span>
+                    <div key={act.id} className="relative pl-10 before:absolute before:left-0 before:top-3 before:bottom-0 before:w-px before:bg-slate-100 last:before:hidden">
+                      <div className="absolute left-[-5px] top-3 w-2.5 h-2.5 rounded-full bg-blue-600 border-4 border-white shadow-xl shadow-blue-500/20"></div>
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 group hover:border-blue-200 transition-all">
+                        <div className="flex justify-between items-start mb-4">
+                           <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">{act.diagnosis}</h4>
+                           <span className="text-[9px] font-mono font-black text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100 shrink-0 ml-4">
+                             {new Date(act.createdAt).toLocaleDateString()}
+                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-medium leading-relaxed mb-3">{act.treatment}</p>
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">{act.treatment}</p>
                         {act.meds && act.meds.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {act.meds.map((m: any, j: number) => (
-                              <span key={j} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[8px] font-bold text-slate-600">
-                                {m.name} {m.dosage}
+                              <span key={j} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[9px] font-black text-slate-600 uppercase tracking-tight">
+                                {m.name} • {m.dosage}
                               </span>
                             ))}
                           </div>
@@ -1030,59 +1051,59 @@ const RecordsView = () => {
                   ))
                 )}
               </div>
-              <div className="p-6 bg-slate-900 border-t border-slate-800 text-center">
-                 <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest leading-loose">Fin de l'historique longitudinal • KYAM Health v4</p>
+              <div className="p-8 bg-slate-900 text-center">
+                 <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.4em]">Fin de Transmission Sécurisée</p>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      <header className="mb-10 flex justify-between items-center">
+      <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">{t('records')}</h2>
-          <p className="text-xs text-slate-500 font-medium">{t('digital_clinical_repo')}</p>
+          <h2 className="text-3xl font-display font-black text-slate-900 uppercase tracking-tighter italic">{t('records')}</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{t('digital_clinical_repo')}</p>
         </div>
         {(user?.role === 'DOCTOR' || user?.role === 'ADMIN') && (
-          <div className="flex gap-3">
+          <div className="flex gap-4">
              <button 
               onClick={() => setShowMedsManager(!showMedsManager)}
-              className="px-4 py-2 bg-slate-100 text-slate-600 text-[10px] font-black uppercase rounded shadow-sm hover:bg-slate-200 transition-all flex items-center gap-2"
+              className="px-6 py-4 bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-[1.2rem] shadow-sm hover:translate-y-[-2px] hover:shadow-lg transition-all flex items-center gap-2"
             >
               <Settings className="w-4 h-4" />
-              {t('medications_base')}
+              Base Médicaments
             </button>
             <button 
               onClick={() => setIsAdding(!isAdding)}
-              className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2"
+              className="px-8 py-4 bg-blue-600 text-white text-[10px] font-black uppercase rounded-[1.2rem] shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:translate-y-[-2px] transition-all flex items-center gap-3"
             >
               {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {t('medical_act')}
+              Nouvel Acte
             </button>
           </div>
         )}
       </header>
 
       {/* Advanced Filter Bar */}
-      <div className="mb-8 flex flex-col md:flex-row gap-4">
+      <div className="mb-12 flex flex-col lg:flex-row gap-6">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
           <input 
             type="text"
-            placeholder="Rechercher un patient ou un diagnostic..."
-            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold shadow-sm focus:border-blue-500 outline-none transition-all"
+            placeholder="Rechercher une identité ou un diagnostic..."
+            className="w-full pl-14 pr-8 py-5 bg-white border border-slate-200 rounded-3xl text-sm font-bold shadow-sm focus:ring-4 focus:ring-blue-100/50 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm">
+        <div className="flex gap-2 p-2 bg-white border border-slate-200 rounded-3xl shadow-sm overflow-x-auto no-scrollbar">
           {['ALL', 'ADULT', 'CHILD', 'TRAVELER'].map(s => (
             <button
               key={s}
               onClick={() => setFilterService(s)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${filterService === s ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
+              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all whitespace-nowrap tracking-widest ${filterService === s ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'}`}
             >
-              {s === 'ALL' ? 'Tous' : (t(s.toLowerCase() + '_vaccines') || s).split(' ')[0]}
+              {s === 'ALL' ? 'Toutes les Unités' : (t(s.toLowerCase() + '_vaccines') || s).split(' ')[0]}
             </button>
           ))}
         </div>
@@ -1092,39 +1113,44 @@ const RecordsView = () => {
          <motion.div 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-white p-6 rounded-2xl border border-slate-200 mb-8 overflow-hidden"
+            className="bg-white p-10 rounded-[2.5rem] border border-slate-200 mb-12 shadow-2xl relative overflow-hidden"
          >
-            <h3 className="font-bold text-sm mb-4 uppercase tracking-widest">{t('medications_base')}</h3>
-            <form onSubmit={handleAddMedToBase} className="flex gap-4 mb-6">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[40px] rounded-full"></div>
+            <h3 className="font-black text-sm mb-8 uppercase tracking-[0.2em] italic text-slate-800">Gestionnaire Thérapeutique</h3>
+            <form onSubmit={handleAddMedToBase} className="flex flex-col md:flex-row gap-4 mb-10">
                <input 
-                  placeholder={t('med_name')}
-                  className="flex-1 p-2 bg-slate-50 border border-slate-100 rounded text-xs"
+                  placeholder="Nom de la molécule..."
+                  className="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold focus:bg-white transition-all outline-none"
                   value={newMed.name}
                   onChange={e => setNewMed({...newMed, name: e.target.value})}
                   required
                />
                <input 
-                  placeholder={t('med_dosage')}
-                  className="w-32 p-2 bg-slate-50 border border-slate-100 rounded text-xs"
+                  placeholder="Dosage"
+                  className="w-full md:w-40 p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold focus:bg-white transition-all outline-none"
                   value={newMed.dosage}
                   onChange={e => setNewMed({...newMed, dosage: e.target.value})}
                   required
                />
-               <button type="submit" className="px-4 bg-blue-600 text-white rounded text-[10px] font-black uppercase">
-                  {t('add_medication')}
+               <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/10">
+                  Enregistrer
                </button>
             </form>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                {medsList.map(m => (
-                  <div key={m.id} className="p-2 bg-slate-50 border border-slate-100 rounded text-[10px] font-bold text-slate-600 flex justify-between">
-                     <span>{m.name} - {m.dosage}</span>
-                     <button className="text-red-400 hover:text-red-600" onClick={async () => {
+                  <div key={m.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center group hover:bg-white hover:border-blue-200 transition-all">
+                     <div>
+                       <p className="text-xs font-black text-slate-800 tracking-tight">{m.name}</p>
+                       <p className="text-[9px] font-black text-slate-400 uppercase">{m.dosage}</p>
+                     </div>
+                     <button className="text-slate-300 hover:text-rose-500 transition-colors p-2" onClick={async () => {
+                        if(!confirm("Supprimer ce médicament ?")) return;
                         await fetch(`/api/medications/${m.id}`, { 
                           method: 'DELETE',
                           headers: { 'Authorization': `Bearer ${localStorage.getItem('kyam_token')}` }
                         });
                         fetchMeds();
-                     }}><X className="w-3 h-3" /></button>
+                     }}><Trash2 className="w-4 h-4" /></button>
                   </div>
                ))}
             </div>
@@ -1133,128 +1159,176 @@ const RecordsView = () => {
 
       {isAdding && (
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-[32px] border border-blue-100 shadow-2xl mb-12 max-w-4xl mx-auto border-t-4 border-t-blue-500"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white p-10 rounded-[3.5rem] border border-blue-100 shadow-2xl mb-16 relative overflow-hidden"
         >
-          <form onSubmit={handleCreateRecord} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('appointment_type')}</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setService('ADULT')} className={`py-3 rounded-xl border text-[10px] font-black uppercase transition-all ${service === 'ADULT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>{t('consultation_adult')}</button>
-                  <button type="button" onClick={() => setService('PEDIATRIC')} className={`py-3 rounded-xl border text-[10px] font-black uppercase transition-all ${service === 'PEDIATRIC' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>{t('consultation_pediatric')}</button>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[80px] rounded-full"></div>
+          <form onSubmit={handleCreateRecord} className="space-y-10 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="col-span-1 md:col-span-2 space-y-4">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Département Clinique</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button type="button" onClick={() => setService('ADULT')} className={`p-6 rounded-3xl border-2 transition-all flex items-center justify-between group ${service === 'ADULT' ? 'bg-blue-600 border-blue-600 text-white shadow-2xl shadow-blue-500/20' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-blue-200'}`}>
+                    <span className="text-xs font-black uppercase tracking-widest">{t('consultation_adult')}</span>
+                    <UserIcon className={`w-5 h-5 ${service === 'ADULT' ? 'text-white' : 'text-slate-300 group-hover:text-blue-500'}`} />
+                  </button>
+                  <button type="button" onClick={() => setService('PEDIATRIC')} className={`p-6 rounded-3xl border-2 transition-all flex items-center justify-between group ${service === 'PEDIATRIC' ? 'bg-blue-600 border-blue-600 text-white shadow-2xl shadow-blue-500/20' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-blue-200'}`}>
+                    <span className="text-xs font-black uppercase tracking-widest">{t('consultation_pediatric')}</span>
+                    <HeartPulse className={`w-5 h-5 ${service === 'PEDIATRIC' ? 'text-white' : 'text-slate-300 group-hover:text-blue-500'}`} />
+                  </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patient_email')}</label>
-                <input value={patientEmail} onChange={e => setPatientEmail(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all font-mono" placeholder={t('seach_patient_email')} />
+              <div className="space-y-4">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{t('patient_email')}</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <input value={patientEmail} onChange={e => setPatientEmail(e.target.value)} className="w-full pl-12 p-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-blue-500 transition-all font-mono" placeholder="patient@example.com" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('diagnosis')}</label>
-                <input value={diagnosis} onChange={e => setDiagnosis(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all" required />
+              <div className="space-y-4">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{t('diagnosis')}</label>
+                <div className="relative">
+                  <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <input value={diagnosis} onChange={e => setDiagnosis(e.target.value)} className="w-full pl-12 p-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:bg-white focus:border-blue-500 transition-all" placeholder="Diagnostic principal..." required />
+                </div>
               </div>
             </div>
             
-            <div className="space-y-2">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('medications_base')}</label>
-               <div className="flex flex-wrap gap-2 mb-4">
+            <div className="space-y-6">
+               <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 italic">Prescription de Médicaments</label>
+               <div className="flex flex-wrap gap-2 p-2 bg-slate-50 rounded-3xl border border-slate-100">
                   {medsList.map(m => (
                      <button 
                         key={m.id}
                         type="button"
                         onClick={() => toggleMed(m)}
-                        className={`px-3 py-1.5 rounded-full border text-[10px] font-bold transition-all ${selectedMeds.find(sm => sm.name === m.name) ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100' : 'bg-white text-slate-500 border-slate-100 hover:border-blue-200'}`}
+                        className={`px-4 py-2.5 rounded-full border text-[10px] font-black uppercase transition-all tracking-tight ${selectedMeds.find(sm => sm.name === m.name) ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-blue-300 hover:text-blue-600'}`}
                      >
-                        {m.name} {m.dosage}
+                        {m.name} <span className="opacity-50 ml-1">{m.dosage}</span>
                      </button>
                   ))}
                </div>
                {selectedMeds.length > 0 && (
-                  <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="space-y-4 p-8 bg-blue-50/30 rounded-3xl border border-blue-100/50 backdrop-blur-sm">
                      {selectedMeds.map((m, i) => (
-                        <div key={i} className="flex gap-4 items-center">
-                           <span className="text-[11px] font-black w-32 truncate">{m.name}</span>
+                        <div key={i} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                           <div className="flex items-center gap-3 w-full sm:w-48 shrink-0">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">{m.name}</span>
+                              <span className="text-[9px] font-black text-blue-400 bg-blue-50 px-1.5 rounded ml-auto">{m.dosage}</span>
+                           </div>
                            <input 
-                              placeholder={t('med_instructions')}
-                              className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold"
+                              placeholder="Instructions de posologie (ex: 1 mat/soir)"
+                              className="flex-1 p-3 bg-white border border-blue-100 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                               value={m.instructions}
                               onChange={e => handleUpdateMedInstruction(i, e.target.value)}
                            />
-                           <button type="button" onClick={() => toggleMed({name: m.name})} className="text-red-400"><X className="w-4 h-4" /></button>
+                           <button type="button" onClick={() => toggleMed({name: m.name})} className="p-3 bg-white text-rose-400 hover:text-rose-600 transition-colors rounded-xl border border-rose-50 shadow-sm"><Trash2 className="w-4 h-4" /></button>
                         </div>
                      ))}
                   </div>
                )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('treatment')}</label>
-              <textarea value={treatment} onChange={e => setTreatment(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-blue-500 transition-all h-24 resize-none" required />
+            <div className="space-y-4">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{t('treatment')}</label>
+              <textarea value={treatment} onChange={e => setTreatment(e.target.value)} className="w-full p-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-sm font-bold outline-none focus:bg-white focus:border-blue-500 transition-all h-32 resize-none" placeholder="Détaillez le protocole de soins..." required />
             </div>
             
-            <div className="flex justify-end gap-3 pt-4">
-               <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">{t('cancel')}</button>
-               <button type="submit" className="px-10 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">
-                  <div className="flex items-center gap-2">
-                     <Clipboard className="w-4 h-4" />
-                     {t('save_medical_act')} & {t('generate_pdf')}
-                  </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6">
+               <button type="button" onClick={() => setIsAdding(false)} className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-800 transition-colors">{t('cancel')}</button>
+               <button type="submit" className="px-12 py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/10 hover:bg-blue-600 hover:translate-y-[-4px] transition-all flex items-center justify-center gap-4">
+                  <FileText className="w-5 h-5" />
+                  <span>Enregistrer l'Acte Médical</span>
                </button>
             </div>
           </form>
         </motion.div>
       )}
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-8">
         {(!Array.isArray(filteredRecords) || filteredRecords.length === 0) ? (
-          <div className="bg-white p-12 rounded-xl border border-slate-200 text-center shadow-sm">
-            <Search className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-loose">Aucun dossier trouvé pour cette recherche</p>
-          </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-20 rounded-[3rem] border border-slate-100 text-center shadow-sm">
+            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+               <Activity className="w-10 h-10 text-slate-100" />
+            </div>
+            <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.5em] leading-loose max-w-xs mx-auto">Aucune donnée clinique ne correspond à vos critères de recherche</p>
+          </motion.div>
         ) : (
-          filteredRecords.map(record => (
-            <div key={record.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:border-blue-200 transition-all group relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                  <Logo className="w-16 h-16" />
+          filteredRecords.map((record, i) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              key={record.id} 
+              className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden flex flex-col md:flex-row gap-8 items-start"
+            >
+               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                  <Logo className="w-24 h-24" />
                </div>
-               <div className="flex justify-between items-start">
+               
+               <div className="w-14 h-14 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shrink-0 shadow-xl group-hover:bg-blue-600 transition-colors">
+                  <Clipboard className="w-6 h-6" />
+               </div>
+
+               <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-4">
+                     <button 
+                       onClick={() => fetchPatientHistory(record.patientEmail)}
+                       className="px-4 py-2 bg-blue-50/50 text-blue-600 text-[9px] font-black uppercase rounded-xl tracking-widest border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                     >
+                        {record.patientEmail || 'Identité Inconnue'}
+                     </button>
+                     <div className="h-px bg-slate-100 flex-1"></div>
+                     <p className="text-[10px] font-mono font-black text-slate-300 uppercase shrink-0">
+                       REF_{record.id.substring(0, 8).toUpperCase()}
+                     </p>
+                  </div>
+
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                       <button 
-                         onClick={() => fetchPatientHistory(record.patientEmail)}
-                         className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-black uppercase rounded tracking-widest border border-blue-100 hover:bg-blue-600 hover:text-white transition-all cursor-pointer"
-                       >
-                          {record.patientEmail || 'Patient'}
-                       </button>
-                    </div>
-                    <h4 className={`font-black text-slate-800 tracking-tight ${record.diagnosis === '[CONFIDENTIEL]' ? 'italic text-slate-400 opacity-50' : ''}`}>
+                    <h4 className={`text-2xl font-display font-black text-slate-900 tracking-tighter uppercase italic leading-none mb-3 ${record.diagnosis === '[CONFIDENTIEL]' ? 'opacity-20' : ''}`}>
                       {record.diagnosis}
                     </h4>
-                    <p className={`text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 ${record.treatment === '[CONFIDENTIEL]' ? 'italic opacity-50' : ''}`}>
+                    <p className={`text-sm text-slate-500 font-medium leading-relaxed max-w-2xl ${record.treatment === '[CONFIDENTIEL]' ? 'opacity-20' : ''}`}>
                       {record.treatment}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-mono text-slate-400">{new Date(record.createdAt).toLocaleDateString()} {new Date(record.createdAt).toLocaleTimeString()}</p>
-                    {record.prescriptionPDF && (
-                       <button 
-                        onClick={() => downloadPDF(record.prescriptionPDF, `Ordonnance_KYAM_${record.id.substring(0, 5)}.pdf`)}
-                        className="mt-2 text-[9px] font-black uppercase text-blue-600 hover:underline flex items-center gap-1 ml-auto"
-                       >
-                         <CreditCard className="w-3 h-3" />
-                         {t('download_prescription')}
-                       </button>
-                    )}
-                  </div>
+
+                  {record.prescription && (
+                    <div className="mt-6 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative group/p">
+                       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover/p:opacity-20">
+                          <Activity className="w-8 h-8 text-blue-600" />
+                       </div>
+                       <p className="text-[10px] font-black text-blue-600 uppercase mb-4 tracking-[0.2em] italic flex items-center gap-2">
+                         <div className="w-1 h-1 bg-current rounded-full"></div>
+                         {t('prescription_title')}
+                       </p>
+                       <p className="text-xs text-slate-700 font-bold whitespace-pre-line leading-loose tracking-tight italic">
+                         {record.prescription}
+                       </p>
+                    </div>
+                  )}
                </div>
-               {record.prescription && (
-                 <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                    <p className="text-[10px] font-black text-blue-700 uppercase mb-2 tracking-widest">{t('prescription_title')}</p>
-                    <p className="text-xs text-slate-600 font-medium whitespace-pre-line leading-relaxed">{record.prescription}</p>
-                 </div>
-               )}
-            </div>
+
+               <div className="w-full md:w-48 text-right flex flex-col justify-between self-stretch pt-2">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{format(new Date(record.createdAt), 'EEEE')}</p>
+                    <p className="text-xl font-display font-black text-slate-900 mt-1">{format(new Date(record.createdAt), 'dd.MM.yy')}</p>
+                    <p className="text-[10px] font-mono text-blue-400 font-black mt-1 uppercase tracking-tighter">{format(new Date(record.createdAt), 'HH:mm:ss')}</p>
+                  </div>
+                  
+                  {record.prescriptionPDF && (
+                     <button 
+                      onClick={() => downloadPDF(record.prescriptionPDF, `Ordonnance_KYAM_${record.id.substring(0, 5)}.pdf`)}
+                      className="mt-8 px-6 py-4 bg-slate-50 text-slate-600 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-slate-900 hover:text-white hover:border-slate-900 flex items-center justify-center gap-3 group/dl"
+                     >
+                       <Download className="w-4 h-4 transition-transform group-hover/dl:translate-y-1" />
+                       CERTIFCAT PDF
+                     </button>
+                  )}
+               </div>
+            </motion.div>
           ))
         )}
       </div>
@@ -1265,45 +1339,71 @@ const RecordsView = () => {
 const PaymentsView = () => {
   const { t } = useTranslation();
   return (
-    <div className="p-6">
-      <header className="mb-10">
-        <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">{t('billing')}</h2>
-        <p className="text-xs text-slate-500 font-medium">{t('billing_manager')}</p>
+    <div className="p-8 md:p-12 max-w-5xl mx-auto pb-32">
+      <header className="mb-12">
+        <h2 className="text-3xl font-display font-black text-slate-900 uppercase tracking-tighter italic">{t('billing')}</h2>
+        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{t('billing_manager')}</p>
       </header>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm mb-8">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">{t('total_outstanding')}</p>
-        <h3 className="text-5xl font-black text-slate-800 font-mono mb-8">45,000 <span className="text-xl text-slate-400 uppercase">GNF</span></h3>
-        <div className="flex gap-4">
-          <button className="px-5 py-3 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md shadow-blue-100 flex items-center gap-2 hover:bg-blue-700 transition-all">
-            <Activity className="w-4 h-4" />
-            {t('initiate_orange')}
-          </button>
-          <button className="px-5 py-3 bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md shadow-blue-100 flex items-center gap-2 hover:bg-blue-600 transition-all">
-            <CreditCard className="w-4 h-4" />
-            {t('initiate_mtn')}
-          </button>
+      <div className="bg-slate-900 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden group mb-12 border border-slate-800">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full -mr-20 -mt-20 group-hover:bg-blue-600/20 transition-all duration-700"></div>
+        <div className="relative z-10">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-4">{t('total_outstanding')}</p>
+          <div className="flex items-baseline gap-4 mb-10">
+            <h3 className="text-6xl font-display font-black text-white tracking-tighter italic">45,000</h3>
+            <span className="text-xl text-blue-500 font-black uppercase tracking-widest">GNF</span>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <button className="px-8 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:translate-y-[-4px] transition-all flex items-center gap-3">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              {t('initiate_orange')}
+            </button>
+            <button className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:translate-y-[-4px] transition-all flex items-center gap-3">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              {t('initiate_mtn')}
+            </button>
+          </div>
         </div>
       </div>
 
-      <h3 className="text-[10px] font-bold text-slate-400 mb-6 font-mono uppercase tracking-[0.2em] border-b border-slate-100 pb-2">{t('verified_tx_pulse')}</h3>
-      <div className="space-y-3">
-        {[1, 2].map(i => (
-          <div key={i} className="bg-white px-6 py-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm hover:bg-slate-50 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 border border-slate-100">
-                <Clock className="w-4 h-4" />
+      <div className="space-y-6">
+        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 mb-8 flex items-center gap-4">
+          {t('verified_tx_pulse')}
+          <div className="h-px bg-slate-100 flex-1"></div>
+        </h3>
+        
+        {[
+          { provider: 'Orange Money Guinée', date: 'Hier, 14:22', amount: '25,000', status: 'COMPLETED', txId: 'OM_88291A' },
+          { provider: 'MTN Mobile Money', date: '12 Oct, 09:15', amount: '20,000', status: 'COMPLETED', txId: 'MTN_00219C' },
+        ].map((tx, i) => (
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1 }}
+            key={i} 
+            className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-6">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-6 ${tx.provider.includes('Orange') ? 'bg-orange-50 text-orange-600' : 'bg-yellow-50 text-yellow-600'}`}>
+                <CreditCard className="w-6 h-6" />
               </div>
-              <div className="leading-tight">
-                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{t('consultation_log')} #{i}</h4>
-                <p className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">{t('language') === 'Langue' ? 'Sept' : 'Sept'} {10 + i}, 2024</p>
+              <div>
+                <p className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1">{tx.provider}</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-slate-400 font-bold">{tx.txId}</span>
+                  <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                  <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{tx.date}</span>
+                </div>
               </div>
             </div>
-            <div className="text-right leading-tight">
-              <p className="text-sm font-black text-slate-800 font-mono">45,000 GNF</p>
-              <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.15em] font-mono">STATUS: {t('verified')}</span>
+            <div className="text-right">
+              <p className="text-xl font-display font-black text-slate-900 italic tracking-tighter">+{tx.amount}</p>
+              <div className="flex items-center gap-2 justify-end mt-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{tx.status}</span>
+              </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -1473,105 +1573,150 @@ const UsersView = () => {
   };
 
   return (
-    <div className="p-6">
-      <header className="mb-10 flex justify-between items-center">
+    <div className="p-8 md:p-12 max-w-7xl mx-auto pb-32">
+      <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">{t('user_directory')}</h2>
-          <p className="text-xs text-slate-500 font-medium">{t('manage_accounts')}</p>
+          <h2 className="text-3xl font-display font-black text-slate-900 uppercase tracking-tighter italic">{t('manage_users')}</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Plateforme d'Onboarding & Gouvernance</p>
         </div>
         <button 
           onClick={() => setIsProvisioning(true)}
-          className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded shadow-sm hover:bg-blue-700 transition-all flex items-center gap-2"
+          className="px-8 py-4 bg-slate-900 text-white text-[10px] font-black uppercase rounded-2xl shadow-xl hover:bg-blue-600 hover:translate-y-[-2px] transition-all flex items-center gap-3"
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="w-5 h-5" />
           <span>{t('provision_user')}</span>
         </button>
       </header>
 
-      {isProvisioning && (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-8 rounded-[32px] border border-blue-100 shadow-2xl mb-8 max-w-2xl">
-          <form onSubmit={handleProvision} className="space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">{t('provision_user')}</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('full_name')}</label>
-                <input required value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold" placeholder="Nom Complet" />
+      <AnimatePresence>
+        {isProvisioning && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[150] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-3xl rounded-[3.5rem] shadow-2xl p-12 overflow-hidden border border-white"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[80px] rounded-full"></div>
+              
+              <div className="flex justify-between items-center mb-10 relative z-10">
+                <h3 className="text-xl font-display font-black uppercase italic tracking-tighter text-slate-900">Nouveau Profil Utilisateur</h3>
+                <button onClick={() => setIsProvisioning(false)} className="p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('email_address')}</label>
-                <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold" placeholder="email@exemple.com" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('role')}</label>
-                <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold">
-                  <option value="PATIENT">PATIENT</option>
-                  <option value="DOCTOR">DOCTOR</option>
-                  <option value="SECRETARY">SECRETARY</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('password')}</label>
-                <input required type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('link_family')}</label>
-                <input value={familyId} onChange={e => setFamilyId(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold font-mono" placeholder="ID Famille (Optionnel)" />
-              </div>
+
+              <form onSubmit={handleProvision} className="space-y-8 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('full_name')}</label>
+                    <input required value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:bg-white focus:border-blue-500 transition-all" placeholder="Jean Dupont" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('email_address')}</label>
+                    <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:bg-white focus:border-blue-500 transition-all font-mono" placeholder="email@kyam.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('role')}</label>
+                    <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black uppercase outline-none focus:bg-white focus:border-blue-500 transition-all cursor-pointer">
+                      <option value="PATIENT">Patient</option>
+                      <option value="DOCTOR">Praticien (Docteur)</option>
+                      <option value="SECRETARY">Secrétariat</option>
+                      <option value="ADMIN">Administrateur</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('password')}</label>
+                    <input required type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:bg-white focus:border-blue-500 transition-all" />
+                  </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {role === 'DOCTOR' && (
+                    <motion.div 
+                      key="doctor-fields"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="p-8 bg-blue-50/50 rounded-[2rem] border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-6"
+                    >
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest ml-1">{t('specialty')}</label>
+                        <input required value={specialty} onChange={e => setSpecialty(e.target.value)} className="w-full p-4 bg-white border border-blue-200 rounded-xl text-xs font-bold outline-none shadow-sm" placeholder="Ex: Cardiologie Interventionnelle" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest ml-1">{t('practitioner_number')}</label>
+                        <input required value={practitionerNumber} onChange={e => setPractitionerNumber(e.target.value)} className="w-full p-4 bg-white border border-blue-200 rounded-xl text-xs font-bold font-mono outline-none shadow-sm" placeholder="RPPS-100..." />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={() => setIsProvisioning(false)} className="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">{t('cancel')}</button>
+                  <button disabled={loading} type="submit" className="px-12 py-4 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50">
+                    {loading ? 'Traitement...' : 'Finaliser Onboarding'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {users.map((u, i) => (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            key={u.id} 
+            className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden flex flex-col"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/5 blur-[40px] rounded-full -mr-10 -mt-10 group-hover:bg-blue-500/10 transition-all"></div>
+            
+            <div className="flex items-center gap-6 mb-8 relative z-10">
+               <div className="w-16 h-16 bg-slate-100 rounded-[1.8rem] overflow-hidden border border-slate-200 ring-4 ring-white shadow-lg">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} alt="user" className="w-full h-full object-cover" />
+               </div>
+               <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">{u.fullName || 'Anonyme'}</h4>
+                    {u.role === 'ADMIN' && <ShieldCheck className="w-4 h-4 text-rose-500" />}
+                  </div>
+                  <p className="text-[10px] font-mono font-black text-blue-600 truncate">{u.email}</p>
+               </div>
             </div>
 
-            {role === 'DOCTOR' && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{t('specialty')}</label>
-                  <input required value={specialty} onChange={e => setSpecialty(e.target.value)} className="w-full p-3 bg-white border border-blue-200 rounded-xl text-xs font-bold" placeholder="Ex: Cardiologue" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{t('practitioner_number')}</label>
-                  <input required value={practitionerNumber} onChange={e => setPractitionerNumber(e.target.value)} className="w-full p-3 bg-white border border-blue-200 rounded-xl text-xs font-bold font-mono" placeholder="RPPS-..." />
-                </div>
-              </motion.div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setIsProvisioning(false)} className="px-6 py-2 text-[10px] font-bold text-slate-400 uppercase">{t('cancel')}</button>
-              <button disabled={loading} type="submit" className="px-10 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-100">{loading ? '...' : t('confirm_booking')}</button>
+            <div className="space-y-6 relative z-10 flex-1 flex flex-col">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col items-center text-center">
+                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Rôle Système</p>
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                        u.role === 'ADMIN' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                        u.role === 'DOCTOR' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                        'bg-white text-slate-500 border-slate-200'
+                      }`}>
+                        {u.role}
+                      </span>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col items-center text-center">
+                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Famille</p>
+                     <p className="text-[9px] font-black text-slate-700 uppercase italic truncate max-w-full">
+                       {u.familyId ? `REF_${u.familyId.substring(0, 4)}` : 'Indépendant'}
+                     </p>
+                  </div>
+               </div>
+               
+               <div className="pt-4 border-t border-slate-50 mt-auto flex gap-3">
+                  <button className="flex-1 py-3 bg-white border border-slate-200 text-slate-400 text-[9px] font-black uppercase rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all">Actions</button>
+                  <button className="px-4 py-3 bg-white border border-slate-200 text-slate-400 text-[9px] font-black uppercase rounded-xl hover:text-blue-600 hover:border-blue-200 transition-all">
+                    <UserIcon className="w-4 h-4" />
+                  </button>
+               </div>
             </div>
-          </form>
-        </motion.div>
-      )}
-
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-100">
-            <tr>
-              <th className="px-6 py-4">{t('full_name')}</th>
-              <th className="px-6 py-4">{t('email_address')}</th>
-              <th className="px-6 py-4">{t('role')}</th>
-              <th className="px-6 py-4 text-right">{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 font-bold text-slate-800">{u.fullName}</td>
-                <td className="px-6 py-4 text-slate-500 font-mono">{u.email}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
-                    u.role === 'ADMIN' ? 'bg-red-50 text-red-700 border border-red-100' :
-                    u.role === 'DOCTOR' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                    'bg-slate-100 text-slate-700'
-                  }`}>
-                    {u.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="text-slate-400 hover:text-blue-600 transition-all"><Settings className="w-4 h-4" /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
@@ -1618,44 +1763,55 @@ const Login = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => v
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+      {/* Background Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-400/5 blur-[120px] rounded-full animate-pulse"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-400/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
+
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-blue-100/50 border border-white"
+        className="w-full max-w-md glass-card rounded-[3.5rem] p-12 shadow-2xl relative z-10 border border-white/40"
       >
-        <div className="flex flex-col items-center mb-10 text-center">
-          <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-200">
+        <div className="flex flex-col items-center mb-12 text-center">
+          <motion.div 
+            whileHover={{ rotate: -5, scale: 1.05 }}
+            className="w-24 h-24 bg-blue-600 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/30"
+          >
             <Logo className="text-white w-14 h-14" />
-          </div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">{t('app_name')}</h2>
-          <p className="text-gray-400 font-medium text-[10px] mt-2 uppercase tracking-widest">{t('app_catchphrase')}</p>
-          <div className="mt-4">
-            <LanguageSwitcher />
-          </div>
+          </motion.div>
+          <h2 className="text-4xl font-display font-black text-slate-900 tracking-tighter uppercase leading-none mb-3 italic">
+             Portail Santé
+          </h2>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">{t('app_catchphrase')}</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold border border-red-100">
-            {error}
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-8 p-5 bg-rose-50 text-rose-600 rounded-3xl text-[11px] font-black uppercase border border-rose-100 flex items-center gap-4"
+          >
+             <div className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0"></div>
+             {error}
+          </motion.div>
         )}
 
         {requires2FA ? (
-           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 mb-6">
-               <p className="text-xs text-blue-800 font-bold leading-relaxed">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="p-5 bg-blue-50/50 rounded-3xl border border-blue-100/50 mb-8 backdrop-blur-sm">
+               <p className="text-[11px] text-blue-800 font-black uppercase tracking-tight leading-relaxed">
                   Un code de vérification a été envoyé sur votre messagerie sécurisée. Veuillez le saisir pour finaliser votre connexion.
                </p>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Code 2FA (6 chiffres)</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">Code de Vérification</label>
               <input
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-mono text-xl tracking-widest text-center font-black"
-                placeholder="000 000"
+                className="w-full p-6 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-mono font-bold text-2xl text-center tracking-[0.8em] text-slate-800"
+                placeholder="000000"
                 maxLength={6}
                 required
               />
@@ -1663,32 +1819,32 @@ const Login = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => v
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-6 bg-blue-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(37,99,235,0.2)] hover:bg-blue-700 transition-all hover:translate-y-[-4px] active:translate-y-0 disabled:opacity-50"
             >
               {loading ? 'Vérification...' : 'Valider le code'}
             </button>
-            <button type="button" onClick={() => setRequires2FA(false)} className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Retour</button>
-           </form>
+            <button type="button" onClick={() => setRequires2FA(false)} className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">← Retour</button>
+          </form>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">{t('email_address')}</label>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">{t('email_address')}</label>
               <input
-                type="text"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-medium"
-                placeholder="name@example.com"
+                className="w-full p-5 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
+                placeholder="nom@kyam.gn"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">{t('password')}</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">{t('password')}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-medium"
+                className="w-full p-5 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
                 placeholder="••••••••"
                 required
               />
@@ -1696,16 +1852,26 @@ const Login = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => v
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-6 bg-slate-900 text-white rounded-3xl font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-slate-900/10 hover:bg-blue-600 transition-all hover:translate-y-[-4px] active:translate-y-0 disabled:opacity-50"
             >
               {loading ? t('authenticating') : t('signin_now')}
             </button>
           </form>
         )}
 
-        <div className="mt-8 text-center space-y-4">
-          <p className="text-sm text-gray-400 font-medium">{t('dont_have_account')} <button className="text-blue-600 font-bold hover:underline" onClick={onRegister}>{t('create_one')}</button></p>
-          <button onClick={onBack} className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-all">← {t('back_to_presentation')}</button>
+        <div className="mt-16 text-center space-y-6">
+          <p className="text-xs text-slate-400 font-medium">
+             {t('dont_have_account')} 
+             <button className="text-blue-600 font-black uppercase ml-2 hover:underline decoration-2 underline-offset-4" onClick={onRegister}>
+                {t('create_one')}
+             </button>
+          </p>
+          <button 
+            onClick={onBack} 
+            className="group flex items-center gap-3 mx-auto text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-slate-900 transition-all"
+          >
+             <span className="transition-transform group-hover:translate-x-[-4px]">←</span> {t('back_to_presentation')}
+          </button>
         </div>
       </motion.div>
     </div>
@@ -1743,56 +1909,61 @@ const Register = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+      <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-blue-400/5 blur-[120px] rounded-full animate-pulse"></div>
+      
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-blue-100/50 border border-white"
+        className="w-full max-w-md glass-card rounded-[3.5rem] p-12 shadow-2xl relative z-10 border border-white/40"
       >
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-200">
+        <div className="flex flex-col items-center mb-12 text-center">
+          <div className="w-20 h-16 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/20">
             <UserPlus className="text-white w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase">Inscription Patient</h2>
-          <p className="text-gray-400 font-medium text-[10px] mt-2 uppercase tracking-widest">{t('app_catchphrase')}</p>
+          <h2 className="text-3xl font-display font-black text-slate-900 tracking-tighter uppercase leading-none mb-3 italic">
+             Nouveau Patient
+          </h2>
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">{t('app_catchphrase')}</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold border border-red-100">
+          <div className="mb-8 p-5 bg-rose-50 text-rose-600 rounded-3xl text-[11px] font-black uppercase border border-rose-100 flex items-center gap-4">
+            <div className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0"></div>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('full_name')}</label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">{t('full_name')}</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-medium text-xs"
+              className="w-full p-5 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
               placeholder="Votre nom complet"
               required
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('email_address')}</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">{t('email_address')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-medium text-xs"
+              className="w-full p-5 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
               placeholder="votre@email.com"
               required
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('password')}</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic">{t('password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all font-medium text-xs"
+              className="w-full p-5 bg-slate-100/50 border border-slate-200/50 rounded-3xl focus:ring-4 focus:ring-blue-100/50 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
               placeholder="••••••••"
               required
             />
@@ -1800,14 +1971,16 @@ const Register = ({ onBack }: { onBack: () => void }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50 mt-4"
+            className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black text-xs uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(37,99,235,0.2)] transition-all active:scale-[0.98] disabled:opacity-50 mt-8 hover:translate-y-[-4px]"
           >
             {loading ? 'Création...' : 'Créer mon compte patient'}
           </button>
         </form>
 
-        <div className="mt-8 text-center">
-          <button onClick={onBack} className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-all">← Retour à la connexion</button>
+        <div className="mt-12 text-center">
+          <button onClick={onBack} className="group flex items-center gap-3 mx-auto text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all">
+             <span className="transition-transform group-hover:translate-x-[-4px]">←</span> Retour à la connexion
+          </button>
         </div>
       </motion.div>
     </div>
