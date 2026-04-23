@@ -76,28 +76,24 @@ const loadDb = () => {
 };
 
 const seedDb = async () => {
-  if (db.users.length === 0) {
-    console.log('[DB] Seeding initial data...');
+  // Ensure gastonylgg@gmail.com exists as an ADMIN
+  if (!db.users.find(u => u.email === 'gastonylgg@gmail.com')) {
+    console.log('[DB] Seeding primary admin user...');
     const hp = await bcrypt.hash('admin123', 10);
-    const admin = {
+    db.users.push({
       id: uuidv4(),
       email: 'gastonylgg@gmail.com',
       password: hp,
-      fullName: 'Administrateur Système',
+      fullName: 'Administrateur Principal',
       role: 'ADMIN',
       createdAt: new Date(),
-    };
-    
-    const admin2 = {
-      id: uuidv4(),
-      email: 'test@kyam.gn',
-      password: hp,
-      fullName: 'Admin Test',
-      role: 'ADMIN',
-      createdAt: new Date(),
-    };
+    });
+    saveDb();
+  }
 
-    const doctorHp = await bcrypt.hash('doctor123', 10);
+  if (db.users.length <= 1) { // Only primary admin or none
+    console.log('[DB] Seeding additional test data...');
+    const hp = await bcrypt.hash('admin123', 10);
     const doctor = {
       id: uuidv4(),
       email: 'doctor@kyam.gn',
@@ -214,6 +210,82 @@ io.on('connection', (socket) => {
 });
 
 // --- AUTH ROUTES ---
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  console.log(`[AUTH] Login attempt for: ${email}`);
+  
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
+  const user = db.users.find(u => u.email === email);
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    console.log(`[AUTH] Invalid credentials for: ${email}`);
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  // 2FA for Staff (DOCTOR, SECRETARY, ADMIN)
+  const isTestAccount = user.email === 'test@kyam.gn' || user.email === 'doctor@kyam.gn';
+  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role) && !isTestAccount) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 5 * 60000); // 5 minutes
+    
+    // Cleanup old codes
+    db.pending_2fa = db.pending_2fa.filter(p => p.email !== email);
+    db.pending_2fa.push({ email, code, expires });
+
+    console.log(`[AUTH] 2FA CODE SENT TO ${email}: ${code}`);
+    return res.json({ requires2FA: true, email });
+  }
+
+  const loginToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
+  console.log(`[AUTH] Login successful for: ${email} (${user.role})`);
+  res.json({ 
+    token: loginToken, 
+    user: { 
+      id: user.id, 
+      email: user.email, 
+      fullName: user.fullName, 
+      role: user.role,
+      mustChangePassword: !!user.mustChangePassword
+    } 
+  });
+});
+
+app.post('/api/auth/verify-2fa', async (req, res) => {
+  const { email, code } = req.body;
+  console.log(`[AUTH] 2FA verification for: ${email}`);
+  
+  const pending = db.pending_2fa.find(p => p.email === email && p.code === code);
+  
+  if (!pending) {
+    return res.status(401).json({ message: 'Invalid or expired code' });
+  }
+
+  if (new Date(pending.expires) < new Date()) {
+    db.pending_2fa = db.pending_2fa.filter(p => p.email !== email);
+    return res.status(401).json({ message: 'Code expired' });
+  }
+
+  const user = db.users.find(u => u.email === email);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  // Cleanup
+  db.pending_2fa = db.pending_2fa.filter(p => p.email !== email);
+
+  const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ 
+    token, 
+    user: { 
+      id: user.id, 
+      email: user.email, 
+      fullName: user.fullName, 
+      role: user.role,
+      mustChangePassword: !!user.mustChangePassword
+    } 
+  });
+});
+
 app.post('/api/auth/register', async (req: any, res) => {
   const { email, password, fullName, role } = req.body;
   
@@ -316,66 +388,7 @@ app.post('/api/doctor/activity', protect, restrictTo('DOCTOR'), (req: any, res) 
   res.json(db.doctors[doctorIndex]);
 });
 
-app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = db.users.find(u => u.email === email);
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-
-  // 2FA for Staff (DOCTOR, SECRETARY, ADMIN)
-  const isTestAccount = user.email === 'test@kyam.gn' || user.email === 'doctor@kyam.gn';
-  if (['DOCTOR', 'SECRETARY', 'ADMIN'].includes(user.role) && !isTestAccount) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 5 * 60000); // 5 minutes
-    
-    // Cleanup old codes
-    db.pending_2fa = db.pending_2fa.filter(p => p.email !== email);
-    db.pending_2fa.push({ email, code, expires });
-
-    console.log(`[AUTH] 2FA CODE SENT TO ${email}: ${code}`);
-    return res.json({ requires2FA: true, email });
-  }
-
-  const loginToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ 
-    token: loginToken, 
-    user: { 
-      id: user.id, 
-      email: user.email, 
-      fullName: user.fullName, 
-      role: user.role,
-      mustChangePassword: !!user.mustChangePassword
-    } 
-  });
-});
-
-app.post('/api/auth/verify-2fa', async (req, res) => {
-  const { email, code } = req.body;
-  const pending = db.pending_2fa.find(p => p.email === email && p.code === code && p.expires > new Date());
-  
-  if (!pending) {
-    return res.status(401).json({ message: 'Invalid or expired 2FA code' });
-  }
-
-  const user = db.users.find(u => u.email === email);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-
-  db.pending_2fa = db.pending_2fa.filter((p: any) => p.email !== email);
-
-  const verificationToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ 
-    token: verificationToken, 
-    user: { 
-      id: user.id, 
-      email: user.email, 
-      fullName: user.fullName, 
-      role: user.role,
-      mustChangePassword: !!user.mustChangePassword
-    } 
-  });
-});
-
+// Removed duplicate login routes from here (moved higher)
 app.post('/api/auth/change-password', protect, async (req: any, res) => {
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) {
@@ -899,10 +912,16 @@ app.delete('/api/medications/:id', protect, restrictTo('ADMIN', 'DOCTOR'), (req,
 });
 
 // --- API 404 HANDLER ---
-// This catch-all for /api MUST be after all valid API routes
-app.use('/api', (req, res) => {
-  console.log(`[404] API route not found: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api')) {
+    console.log(`[404] API route not found: ${req.method} ${req.url}`);
+    return res.status(404).json({ 
+      error: 'API Route Not Found',
+      method: req.method,
+      path: req.url 
+    });
+  }
+  next();
 });
 
 // --- VITE MIDDLEWARE ---
