@@ -21,6 +21,12 @@ const DB_PATH = path.join(process.cwd(), 'db.json');
 
 app.use(express.json());
 
+// --- LOGGING MIDDLEWARE ---
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 // --- MOCK DATABASE ---
 let db = {
   users: [] as any[],
@@ -115,9 +121,6 @@ const seedDb = async () => {
     saveDb();
   }
 };
-
-loadDb();
-seedDb();
 
 // --- REAL-TIME HELPERS ---
 const notifyUser = (userId: string, event: string, data: any) => {
@@ -895,14 +898,17 @@ app.delete('/api/medications/:id', protect, restrictTo('ADMIN', 'DOCTOR'), (req,
   res.status(204).send();
 });
 
+// --- API 404 HANDLER ---
+// This catch-all for /api MUST be after all valid API routes
+app.use('/api', (req, res) => {
+  console.log(`[404] API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
+});
+
 // --- VITE MIDDLEWARE ---
 async function startServer() {
   loadDb();
-
-  // API 404 handler - MUST be before Vite/Static middleware
-  app.use('/api', (req, res) => {
-    res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
-  });
+  await seedDb(); // Ensure seeding is awaited
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -919,64 +925,6 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, '0.0.0.0', async () => {
-    // Seed initial admin and test user if no users exist
-    if (db.users.length === 0) {
-      const hashedAdminPassword = await bcrypt.hash('123Liber+y', 10);
-      const hashedTestPassword = await bcrypt.hash('test', 10);
-
-      // Main Admin
-      db.users.push({
-        id: uuidv4(),
-        email: 'admin',
-        password: hashedAdminPassword,
-        fullName: 'Administrateur Principal',
-        role: 'ADMIN',
-        recoveryEmail: 'gastonylgg@gmail.com',
-        mustChangePassword: false,
-        createdAt: new Date()
-      });
-    }
-
-    // Seed test account for pre-deployment if doesn't exist
-    if (!db.users.find(u => u.email === 'test@kyam.gn')) {
-      const hashedTestPassword = await bcrypt.hash('test', 10);
-      const testAdmin = {
-        id: uuidv4(),
-        email: 'test@kyam.gn',
-        password: hashedTestPassword,
-        fullName: 'Compte Test Admin',
-        role: 'ADMIN' as const,
-        mustChangePassword: false,
-        createdAt: new Date()
-      };
-      db.users.push(testAdmin);
-      
-      const hashedDoctorPassword = await bcrypt.hash('test', 10);
-      const testDoctorUser = {
-        id: uuidv4(),
-        email: 'doctor@kyam.gn',
-        password: hashedDoctorPassword,
-        fullName: 'Dr. Test Praticien',
-        role: 'DOCTOR' as const,
-        mustChangePassword: false,
-        createdAt: new Date()
-      };
-      db.users.push(testDoctorUser);
-      db.doctors.push({
-        id: uuidv4(),
-        userId: testDoctorUser.id,
-        firstName: 'Dr.',
-        lastName: 'Test',
-        specialty: 'Diagnostic Général',
-        registrationNumber: 'RPPS-TEST-001',
-        currentActivity: 'CONSULTATION',
-        createdAt: new Date(),
-      });
-
-      console.log('[SEED] Test accounts created:');
-      console.log(' - Admin: test@kyam.gn / test');
-      console.log(' - Doctor: doctor@kyam.gn / test');
-    }
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

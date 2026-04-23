@@ -1742,13 +1742,22 @@ const Login = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => v
       const endpoint = requires2FA ? '/api/auth/verify-2fa' : '/api/auth/login';
       const body = requires2FA ? { email, code } : { email, password };
 
+      console.log(`[DEBUG] Fetching ${endpoint} with body:`, body);
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('Non-JSON response received from', endpoint, ':', text.substring(0, 500));
+        throw new Error(`Server returned non-JSON response (${res.status}). Verify API routes.`);
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message || 'Login failed');
 
       if (data.requires2FA) {
         setRequires2FA(true);
