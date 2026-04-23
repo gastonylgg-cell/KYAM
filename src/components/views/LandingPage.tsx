@@ -131,13 +131,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterPortal }) => {
           
           <div className="flex items-center gap-4">
             <button 
-              onClick={toggleLanguage}
-              className="group flex items-center justify-center w-12 h-12 bg-white/40 hover:bg-white rounded-2xl border border-white/60 text-slate-600 shadow-sm transition-all hover:border-blue-200"
-              title="Toggle Language"
-            >
-              <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-            </button>
-            <button 
               onClick={onEnterPortal}
               className="px-8 h-12 bg-slate-900 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.25em] shadow-2xl shadow-slate-900/20 hover:bg-blue-600 transition-all hover:scale-[1.05] active:scale-95"
             >
@@ -187,11 +180,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterPortal }) => {
             transition={{ duration: 1, ease: 'easeOut' }}
             className="relative"
           >
-            <div className="relative aspect-[4/5] rounded-[4rem] overflow-hidden shadow-2xl skew-y-[-2deg] border-[12px] border-white">
+            <div className="relative aspect-[4/5] rounded-[4rem] overflow-hidden shadow-2xl skew-y-[-2deg] border-[12px] border-white bg-slate-100">
               <img 
-                src="https://picsum.photos/seed/kyam-hero/1200/1500" 
-                alt="Clinic Interior" 
-                className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700"
+                src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?q=80&w=2070&auto=format&fit=crop" 
+                alt="Modern African Medical Team" 
+                className="w-full h-full object-cover transition-all duration-700"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-blue-900/60 via-transparent to-transparent"></div>

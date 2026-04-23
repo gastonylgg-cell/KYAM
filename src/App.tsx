@@ -65,7 +65,6 @@ import {
   isBefore
 } from 'date-fns';
 import Logo from './components/Logo';
-import LanguageSwitcher from './components/LanguageSwitcher';
 
 // --- TYPES ---
 export interface User {
@@ -2006,7 +2005,17 @@ const parseJwt = (token: string) => {
 
 export default function App() {
   const { t } = useTranslation();
+  const [isBypassEnabled] = useState(true); // Set to true to disable auth requirement
+  const bypassUser: User = {
+    id: 'bypass-admin',
+    email: 'gastonylgg@gmail.com',
+    fullName: 'Bypass Administrator',
+    role: 'ADMIN'
+  };
+
   const [user, setUser] = useState<User | null>(() => {
+    if (isBypassEnabled) return bypassUser;
+    
     const savedToken = localStorage.getItem('kyam_token');
     const savedUser = localStorage.getItem('kyam_user');
     
@@ -2021,22 +2030,32 @@ export default function App() {
     
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
   const [token, setToken] = useState<string | null>(() => {
+    if (isBypassEnabled) return 'bypass-token';
     const saved = localStorage.getItem('kyam_token');
     if (saved) {
       const decoded = parseJwt(saved);
       if (decoded && decoded.exp * 1000 < Date.now()) {
-        return null; // Already removed in setUser's initializer
+        return null; 
       }
     }
     return saved;
   });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isVisitingLanding, setIsVisitingLanding] = useState(true);
+  const [isVisitingLanding, setIsVisitingLanding] = useState(isBypassEnabled ? false : true);
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // --- BRAVO MODE: BYPASS AUTH FOR TESTING ---
+  useEffect(() => {
+    if (isBypassEnabled) {
+      console.log('--- BYPASS MODE ACTIVE: AUTH DISABLED ---');
+    }
+  }, [isBypassEnabled]);
 
   // Auto-logout after 2 hours of inactivity
   useEffect(() => {
@@ -2155,7 +2174,6 @@ export default function App() {
                   </span>
                 </div>
                 <div className="flex items-center gap-6">
-                  <LanguageSwitcher />
                   <div className="flex gap-4">
                     <div className="text-right">
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{t('server_pulse')}</p>
